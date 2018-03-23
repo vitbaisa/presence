@@ -1,4 +1,11 @@
+#!/usr/bin/env python
+#coding=utf-8
+
+import os
+import sys
+import cgi
 import sqlite3
+import json
 
 """
 TODO: Properties
@@ -10,12 +17,16 @@ TODO: Properties
 """
 
 class Presence():
+    "A lightweight event-presence manager"
+
     show_last_n = 3
     default_limit = 16
     lock_n_hours_before = 24
 
-    def __init__(self):
-        pass
+    def __init__(self, database):
+        self.conn = sqlite3.connect(database)
+        self.cursor = self.conn.cursor()
+        self.output = sys.stdout
 
     def get_users(self):
         return []
@@ -35,6 +46,28 @@ class Presence():
     def session(self, userid, cookie):
         # check session
         return 
+
+
+    def last_n_
+
+    def default(self):
+        return {
+            'error': 'Unknown or missing method',
+            'app': self.__doc__
+        }
+
+    def serve(self):
+        form = cgi.FieldStorage()
+        parse_url = os.getenv('PATH_INFO', '').strip().split('/')
+        if len(parse_url) > 1:
+            methodname = parse_url[1]
+            method = getattr(self, methodname, self.default)
+        else:
+            method = self.default
+        parameters = dict([(k, form.getvalue(k)) for k in form])
+        response = apply(method, [], parameters)
+        self.output.write('Content-Type: application/json; charset=utf-8\n\n')
+        self.output.write(json.dumps(response) + '\n')
 
 if __name__ == '__main__':
     events = [
