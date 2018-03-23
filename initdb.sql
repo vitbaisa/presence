@@ -3,6 +3,7 @@ CREATE TABLE users (
     username    CHAR(20) NOT NULL UNIQUE,
     name        CHAR(50),
     last_access DATETIME DEFAULT CURRENT_TIMESTAMP,
+    email       CHAR(50) NOT NULL,
     sessionid   CHAR(50),
     password    CHAR(50)
 );
@@ -13,15 +14,50 @@ CREATE TABLE events (
     starts      DATETIME,
     ends        DATETIME,
     location    CHAR(50),
-    maxplayers  INTEGER
+    capacity    INTEGER,
+    courts      INTEGER
 );
 
 CREATE TABLE presence (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     eventid     INTEGER NOT NULL,
-    userid      INTEGER NOT NULL,
-    guest       CHAR(20),
-    time        DATETIME DEFAULT CURRENT_TIMESTAMP,
+    userid      INTEGER,
+    guestname   CHAR(20),
+    datetime    DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (eventid) REFERENCES events(id),
     FOREIGN KEY (userid) REFERENCES users(id)
 );
+
+CREATE TABLE comments (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    eventid     INTEGER NOT NULL,
+    userid      INTEGER NOT NULL,
+    datetime    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    text        TEXT,
+    FOREIGN KEY (userid) REFERENCES users(id)
+);
+
+INSERT INTO users (username, name, email, sessionid, password) VALUES ('vit_baisa', 'Vít Baisa', 'vit.baisa@gmail.com', 'ASDF', 'p1');
+INSERT INTO users (username, name, email, sessionid, password) VALUES ('jan_vodak', 'Jan Vodák', 'vit.baisa+2@gmail.com', 'ASDF', 'p2');
+INSERT INTO users (username, name, email, sessionid, password) VALUES ('zdenek_mejzlik', 'Zdeněk Mejzlík', 'vit.baisa+3@gmail.com', 'ASDF', 'p3');
+INSERT INTO users (username, name, email, sessionid, password) VALUES ('hana_pospisilova', 'Hana Pospíšilová', 'vit.baisa+4@gmail.com', 'ASDF', 'p4');
+INSERT INTO users (username, name, email, sessionid, password) VALUES ('martin_svoboda', 'Martin Svoboda', 'vit.baisa+5@gmail.com', 'ASDF', 'p5');
+
+INSERT INTO events (title, starts, ends, location, capacity, courts) VALUES ('Čtvrtek, volná hra', '2018-03-22 19:00:00', '2018-03-22 21:00:00', 'Zetor', 20, 4);
+INSERT INTO events (title, starts, ends, location, capacity, courts) VALUES ('Neděle, volná hra', '2018-03-25 19:00:00', '2018-03-25 21:00:00', 'Zetor', 20, 4);
+INSERT INTO events (title, starts, ends, location, capacity, courts) VALUES ('Pondělí, řízený trénink', '2018-03-26 19:00:00', '2018-03-26 21:00:00', 'Zetor', 20, 4);
+INSERT INTO events (title, starts, ends, location, capacity, courts) VALUES ('Čtvrtek, volná hra', '2018-03-22 19:00:00', '2018-03-22 21:00:00', 'Zetor', 20, 4);
+
+INSERT INTO presence (eventid, userid) VALUES (1, 1);
+INSERT INTO presence (eventid, userid) VALUES (1, 2);
+INSERT INTO presence (eventid, userid) VALUES (1, 3);
+INSERT INTO presence (eventid, userid) VALUES (1, 4);
+INSERT INTO presence (eventid, userid) VALUES (1, 1);
+INSERT INTO presence (eventid, userid) VALUES (1, 2);
+INSERT INTO presence (eventid, userid) VALUES (2, 3);
+INSERT INTO presence (eventid, userid) VALUES (3, 2);
+INSERT INTO presence (eventid, userid) VALUES (4, 1);
+
+INSERT INTO comments (eventid, userid, text) VALUES (1, 2, 'Sorry, bolí mě noha, nejdu');
+INSERT INTO comments (eventid, userid, text) VALUES (1, 3, 'Zapomněl jsem.');
+INSERT INTO comments (eventid, userid, text) VALUES (2, 2, 'Sorry, bolí mě noha, nejdu');

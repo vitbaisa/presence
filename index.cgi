@@ -3,6 +3,7 @@
 from lib import Presence
 
 class App(Presence):
+    admins = ['vit_baisa', 'hana_pospisilova', 'martin_svoboda']
     db = 'presence.db'
 
     def __init__(self):
