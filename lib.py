@@ -7,12 +7,6 @@ import cgi
 import sqlite3
 import json
 
-"""
-TODO: Properties
-4. lock N hours before every event
-5. lock when limit is reached
-"""
-
 class Presence():
     "A lightweight event-presence manager"
 
@@ -34,6 +28,8 @@ class Presence():
                 LIMIT %d;""" % n
         r = self.cursor.execute(q)
         o = []
+        # TODO: lock when capacity is full
+        # TODO: lock N hours before event starts
         for row in r.fetchall():
             o.append({
                 'id': row[0],
@@ -90,24 +86,21 @@ class Presence():
         # only admin
         return []
 
-    def register(self, userid, eventid):
+    def register(self, eventid):
         q = """INSERT INTO presence
                 (eventid, userid)
-                VALUES ("%s", "%s");"""
+                VALUES ("%s", "%s");""" % (int(eventid), self.userid)
         r = self.cursor.execute(q)
-        # TODO: return the inserted row
+        self.conn.commit()
         return {'data': 'registered'}
 
-    def unregister(self, userid, eventid):
-        # remove attendance
-        q = """DELETE * FROM presence
+    def unregister(self, eventid):
+        q = """DELETE FROM presence
                 WHERE userid = %d
-                AND eventid = %d""" % (userid, eventid)
+                AND eventid = %d""" % (self.userid, int(eventid))
+        r = self.cursor.execute(q)
+        self.conn.commit()
         return {'data': 'unregistered'}
-
-    def session(self, userid, cookie):
-        # check session, check if user is admin
-        return 
 
     def default(self):
         return {
@@ -115,10 +108,19 @@ class Presence():
             'app': self.__doc__
         }
 
-    def username2userid(self, username):
-        q = 'SELECT id FROM users WHERE username = "%s"' % username
+    def get_user(self, username):
+        q = 'SELECT * FROM users WHERE username = "%s"' % username
         r = self.cursor.execute(q).fetchone()
-        return r and r[0] or -1
+        if r:
+            return {
+                'id': r[0],
+                'username': r[1],
+                'name': r[2],
+                'last_access': r[3],
+                'email': r[4],
+                'admin': r[1] in self.admins
+            }
+        return {}
 
     def serve(self):
         form = cgi.FieldStorage()
@@ -128,49 +130,38 @@ class Presence():
             method = getattr(self, methodname, self.default)
         else:
             method = self.default
+        username = os.getenv('REMOTE_USER', 'anonymous')
+        user = self.get_user(username)
+        self.userid = user['id']
         parameters = dict([(k, form.getvalue(k)) for k in form])
         response = apply(method, [], parameters)
-        username = os.getenv('REMOTE_USER', 'anonymous')
-        self.userid = self.username2userid(username)
+        response['user'] = user
         self.output.write('Content-Type: application/json; charset=utf-8\n\n')
         self.output.write(json.dumps(response) + '\n')
 
 if __name__ == '__main__':
     import datetime
-    today = datetime.datetime.now()
-    thursday = today + datetime.timedelta(days=3)
-    sunday = today + datetime.timedelta(days=6)
-    events = [
-        {
-            'title': 'Pondělí, řízený trénink',
-            'location': 'Zetor Líšeň',
-            'starts': monday.strftime('%Y-%m-%d 19:00:00'),
-            'ends': monday.strftime('%Y-%m-%d 21:00:00'),
-            'capacity': 16,
-            'courts': 5
-        },
-        {
-            'title': 'Čtvrtek, volná hra',
-            'location': 'Zetor Líšeň',
-            'starts': thursday.strftime('%Y-%m-%d 19:00:00'),
-            'ends': thursday.strftime('%Y-%m-%d 21:00:00'),
-            'capacity': 20,
-            'courts': 4
-        },
-        {
-            'title': 'Neděle, volná hra',
-            'location': 'Zetor Líšeň',
-            'starts': sunday.strftime('%Y-%m-%d 19:00:00'),
-            'ends': sunday.strftime('%Y-%m-%d 21:00:00'),
-            'capacity': 20,
-            'courts': 4
-        }
-    ]
+    next_week = datetime.datetime.now() + datetime.timedelta(days=7)
+    day = datetime.datetime.today().weekday()
+    titles = {
+        0: 'Pondělí, řízený trénink',
+        3: 'Čtvrtek, volná hra',
+        6: 'Neděle, volná hra'
+    }
+    capacity = {0: 20, 3: 16, 6: 16}
+    courts = {0: 5, 3: 4, 6: 4}
+    event = {
+        'title': titles[day],
+        'location': 'Zetor Líšeň',
+        'starts': next_week.strftime('%Y-%m-%d 19:00:00'),
+        'ends': next_week.strftime('%Y-%m-%d 21:00:00'),
+        'capacity': capacity[day],
+        'courts': courts[day]
+    }
     conn = sqlite3.connect('presence.db')
     cursor = conn.cursor()
-    for ev in events:
-        q = """INSERT INTO events
-               (title, starts, ends, location, capacity, courts)
-               VALUES ("%(title)s", "%(starts)s", "%(ends)s",
-               "%(location)s", %(capacity)d, %(courts)d);""" % ev
-        cursor.execute(q)
+    q = """INSERT INTO events
+            (title, starts, ends, location, capacity, courts)
+            VALUES ("%(title)s", "%(starts)s", "%(ends)s",
+            "%(location)s", %(capacity)d, %(courts)d);""" % event
+    cursor.execute(q)
