@@ -4,7 +4,7 @@
         <div class="col s12">
             <ul class="tabs">
                 <li class="tab col s4" each={ev, i in events}>
-                    <a onclick={change_event}
+                    <a onclick={change_event} title="{event.starts} / {event.location}"
                             href="#event{i+1}">{ev.title}</a>
                     {ev.starts}
                 </li>
@@ -12,38 +12,18 @@
         </div>
     </ul>
     <div class="row">
-        <div class="col s12">
-            <table>
-                <tr>
-                    <th>Kdy</th>
-                    <td>{event.starts}</td>
-                </tr>
-                <tr>
-                    <th>Kde</th>
-                    <td>{event.location}</td>
-                </tr>
-                <tr>
-                    <th>Kurtů</th>
-                    <td>{event.courts}</td>
-                </tr>
-            </table>
-        </div>
-    </div>
-    <div class="row">
-        <div class="col s12 text-center">
-            <virtual if={registered}>
-                <button class="btn red darken-2" onclick={unregister}>Odhlásit</button>
-            </virtual>
-            <virtual if={!registered}>
-                <button class="btn red darken-2" onclick={register}>Přihlásit</button>
-            </virtual>
-        </div>
-    </div>
-    <div class="row">
         <div class="col s12 l6">
             <div class="card">
                 <div class="card-content">
-                    <div class="card-title">Přihlášení {presence.length} / {event.capacity}</div>
+                    <div class="card-title">
+                        Účast {presence.length} / {event.capacity}
+                        <virtual if={registered}>
+                            <button class="right btn red darken-2" onclick={unregister}>Odhlásit</button>
+                        </virtual>
+                        <virtual if={!registered}>
+                            <button class="right btn red darken-2" onclick={register}>Přihlásit</button>
+                        </virtual>
+                    </div>
                     <table class="table striped">
                         <tbody>
                             <tr each={item, i in presence} class={red-text: item.userid == user.id}>
@@ -68,14 +48,14 @@
                     </ul>
                     <form>
                         <div class="input-field">
-                            <textarea onchange={changed_area}
+                            <textarea onchange={changed_area} ref="new_comment"
+                                    if={show_textarea}
                                     class="materialize-textarea">
                             </textarea>
-                            <label>Přidat komentář</label>
+                            <label if={show_textarea}>Přidat komentář</label>
                         </div>
                         <div class="input-field">
-                            <input type="submit" class="btn"
-                                    value="Přidat komentář" />
+                            <a class="btn" onclick={add_comment}>Přidat komentář</a>
                         </div>
                     </form>
                 </div>
@@ -130,6 +110,7 @@
         this.event_pos = 0
         this.registered = false
         this.user = {}
+        this.show_textarea = false
 
         change_event(ev) {
             this.event = ev.item.ev
@@ -155,6 +136,30 @@
                     console.log(d);
                 }
             })
+        }
+
+        add_comment(ev) {
+            if (!this.show_textarea) {
+                this.show_textarea = true
+                return false
+            }
+            let comment = this.refs.new_comment.value.trim()
+            if (!comment.length) {
+                alert('Write something')
+                return false
+            }
+            $.ajax({
+                url: cgi + '/add_comment?eventid=' + this.event.id + '&comment=' + comment,
+                success: (d) => {
+                    this.get_comments(this.eventid)
+                    this.show_textarea = false
+                    this.update()
+                },
+                error: (d) => {
+                    console.log(d)
+                }
+            })
+            return false
         }
 
         events() {

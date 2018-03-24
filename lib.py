@@ -52,7 +52,7 @@ class Presence():
                 FROM presence, users
                 WHERE eventid = %d
                 AND presence.userid = users.id
-                ORDER BY users.name""" % int(eventid)
+                ORDER BY presence.datetime""" % int(eventid)
         r = self.cursor.execute(q)
         o = []
         for row in r.fetchall():
@@ -63,6 +63,15 @@ class Presence():
                 'datetime': row[3]
             })
         return {'data': o}
+
+    def add_comment(self, eventid, comment):
+        q = """INSERT INTO comments
+                (eventid, userid, text)
+                VALUES (%d, %d, "%s")""" % (int(eventid), self.userid, comment)
+        r = self.cursor.execute(q)
+        self.conn.commit()
+        # TODO: sent comment id
+        return {'data': 'Comment added'}
 
     def comments(self, eventid):
         q = """SELECT *
