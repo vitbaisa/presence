@@ -1,12 +1,10 @@
 <presence>
-    <h4>Hráč: {user.name}</h4>
     <div class="row">
         <div class="col s12">
             <ul class="tabs">
                 <li class="tab col s4" each={ev, i in events}>
-                    <a onclick={change_event} title="{event.starts} / {event.location}"
-                            href="#event{i+1}">{ev.title}</a>
-                    {ev.starts}
+                    <a onclick={change_event} title="{ev.starts}/{ev.location}"
+                            href="#">{ev.title}</a>
                 </li>
             </ul>
         </div>
@@ -16,20 +14,29 @@
             <div class="card">
                 <div class="card-content">
                     <div class="card-title">
-                        Účast {presence.length} / {event.capacity}
+                        Účast
+                        <span class="lighten-2 {red-text: presence.length >= event.capacity}">
+                        {presence.length} / {event.capacity}</span>
                         <virtual if={registered}>
-                            <button class="right btn red darken-2" onclick={unregister}>Odhlásit</button>
+                            <a class="right btn red darken-2" onclick={unregister}>Odhlásit ({user.name})</a>
                         </virtual>
                         <virtual if={!registered}>
-                            <button class="right btn red darken-2" onclick={register}>Přihlásit</button>
+                            <a class="right btn {disabled: presence.length >= event.capacity || event.locked}"
+                                    onclick={register}>Přihlásit ({user.name})</a>
                         </virtual>
                     </div>
+                    <blockquote if={!registered && presence.length >= event.capacity}>
+                        Termín je již plně obsazen, nelze se přihlásit.
+                    </blockquote>
+                    <blockquote if={!registered && event.locked}>
+                        Nelze se přihlašovat méně než 24 hodin předem.
+                    </blockquote>
                     <table class="table striped">
                         <tbody>
                             <tr each={item, i in presence} class={red-text: item.userid == user.id}>
                                 <td>{i+1}</td>
-                                <td>{item.username}</td>
-                                <td class="time">{item.datetime}</td>
+                                <td>{item.guestname || item.username} <span if={item.guestname}>(host)</span></td>
+                                <td class="text-right">{item.datetime}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -39,11 +46,11 @@
         <div class="col s12 l6">
             <div class="card">
                 <div class="card-content">
-                    <ul class="comments" if={comments.length}>
-                        <li each={comment in comments} class={red-text: comment.userid == user.id}>
-                            <p>{comment.text}</p>
-                            <span>{comment.userid}</span>
-                            <span class="datetime">({comment.datetime})</span>
+                    <ul class="collection" if={comments.length}>
+                        <li each={comment in comments} class="collection-item"
+                                title={comment.datetime}>
+                            <span class="badge"><i class="fa fa-user"></i> {comment.name}</span>
+                            {comment.text}
                         </li>
                     </ul>
                     <form>
@@ -62,33 +69,37 @@
             </div>
         </div>
     </div>
-    <div class="card" if={user.admin}>
-        <div class="card-content" >
-            <h4 class="card-title">Admin</h4>
-            <div class="row">
-                <div class="col s6 input-field">
-                    <input type="text" onchange={add_guest} />
-                    <label>Přidat hosta</label>
-                </div>
-                <div class="col s4 input-field">
-                    <input type="checkbox" />
-                    <label>Oznámit emailem?</label>
-                </div>
-                <div class="col s2">
-                    <a class="btn btn-primary">Přidat</a>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col s2 input-field">
-                    <input type="number" onchange={change_capacity}
-                            value={event.capacity} />
-                </div>
-                <div class="col s4 input-field">
-                    <input type="checkbox" />
-                    <label>Oznámit emailem?</label>
-                </div>
-                <div class="col offset-s4 s2">
-                    <a class="btn btn-primary">Změnit</a>
+    <div class="row">
+        <div class="col s12">
+            <div class="card" if={user.admin}>
+                <div class="card-content">
+                    <div class="row">
+                        <div class="col s6 input-field">
+                            <input type="text" ref="guest" onchange={add_guest} />
+                            <label>Přidat hosta</label>
+                        </div>
+                        <div class="col s4 input-field">
+                            <input type="checkbox" />
+                            <label>Oznámit emailem?</label>
+                        </div>
+                        <div class="col s2">
+                            <a class="btn btn-primary">Přidat</a>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col s2 input-field">
+                            <input type="number" value={event.capacity} ref="capacity"
+                                    min="1" max="30" />
+                            <label>Kapacita</label>
+                        </div>
+                        <div class="col s4 input-field">
+                            <input type="checkbox" />
+                            <label>Oznámit emailem?</label>
+                        </div>
+                        <div class="col offset-s4 s2">
+                            <a class="btn btn-primary" onclick={change_capacity}>Změnit</a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -114,14 +125,28 @@
 
         change_event(ev) {
             this.event = ev.item.ev
-            this.get_comments(this.event.id)
-            this.get_presence(this.event.id)
+            this.get_comments()
+            this.get_presence()
             this.update()
         }
 
-        get_presence(eventid) {
+        change_capacity(ev) {
+            let capacity = this.refs.capacity.value
             $.ajax({
-                url: cgi + '/presence?eventid=' + eventid,
+                url: cgi + '/capacity?eventid=' + this.event.id + '&capacity=' + capacity,
+                success: (d) => {
+                    // TODO: only update capacity
+                    this.get_events()
+                },
+                error: (d) => {
+                    console.log(d);
+                }
+            })
+        }
+
+        get_presence() {
+            $.ajax({
+                url: cgi + '/presence?eventid=' + this.event.id,
                 success: (d) => {
                     this.presence = d.data
                     this.registered = false
@@ -138,6 +163,22 @@
             })
         }
 
+        add_guest() {
+            let guestname = this.refs.guest.value
+            $.ajax({
+                url: cgi + '/register_guest?eventid=' + this.event.id + '&guestname=' + guestname,
+                success: (d) => {
+                    this.get_presence()
+                    this.refs.guest.value = ""
+                    this.update()
+                },
+                error: (d) => {
+                    console.log(d)
+                }
+            })
+
+        }
+
         add_comment(ev) {
             if (!this.show_textarea) {
                 this.show_textarea = true
@@ -145,13 +186,13 @@
             }
             let comment = this.refs.new_comment.value.trim()
             if (!comment.length) {
-                alert('Write something')
+                this.show_textarea = true
                 return false
             }
             $.ajax({
                 url: cgi + '/add_comment?eventid=' + this.event.id + '&comment=' + comment,
                 success: (d) => {
-                    this.get_comments(this.eventid)
+                    this.get_comments()
                     this.show_textarea = false
                     this.update()
                 },
@@ -162,17 +203,16 @@
             return false
         }
 
-        events() {
+        get_events() {
             $.ajax({
                 url: cgi + '/events',
                 success: (d) => {
                     console.log(d)
                     this.events = d.data 
                     this.event = this.events[0]
-                    this.eventid = this.event.id
                     this.user = d.user
-                    this.get_presence(this.eventid)
-                    this.get_comments(this.eventid)
+                    this.get_presence()
+                    this.get_comments()
                     this.update()
                     $(document).ready(function(){
                         $('.tabs').tabs();
@@ -183,13 +223,12 @@
                 }
             })
         }
-        this.events()
+        this.get_events()
 
-        get_comments(eventid) {
+        get_comments() {
             $.ajax({
-                url: cgi + '/comments?eventid=' + eventid,
+                url: cgi + '/comments?eventid=' + this.event.id,
                 success: (d) => {
-                    console.log(d)
                     this.comments = d.data
                     this.update()
                 },
@@ -203,7 +242,7 @@
             $.ajax({
                 url: cgi + '/register?eventid=' + this.event.id,
                 success: (d) => {
-                    this.get_presence(this.event.id)
+                    this.get_presence()
                 },
                 error: (d) => {
                     console.log(d)
@@ -215,16 +254,12 @@
             $.ajax({
                 url: cgi + '/unregister?eventid=' + this.event.id,
                 success: (d) => {
-                    this.get_presence(this.event.id)
+                    this.get_presence()
                 },
                 error: (d) => {
                     console.log(d)
                 }
             })
         }
-
-        this.on('updated', () => {
-            // TODO: localize all datetime strings
-        })
     </script>
 </presence>

@@ -12,7 +12,17 @@
 }
 html {
     font-family: 'Open Sans', Arial, sans-serif;
+    background-color: #EEE;
+}
+.tabs {
+    background-color: #EEE;
 }
 h1, h2, h3, h4 {
     font-family: 'Open Sans Light', Arial, sans-serif;
+}
+th, td {
+    padding: .5em;
+}
+table {
+    margin-top: 1em;
 }

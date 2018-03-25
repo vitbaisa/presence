@@ -6,13 +6,15 @@ import sys
 import cgi
 import sqlite3
 import json
+import datetime
+from dateutil import tz
 
 class Presence():
     "A lightweight event-presence manager"
 
     show_last_n = 3
     default_capacity = 16
-    lock_n_hours_before = 24
+    lock_n_hours_before = 24 # TODO
     is_admin = False
 
     def __init__(self, database):
@@ -23,13 +25,11 @@ class Presence():
     def events(self):
         n = self.show_last_n
         q = """SELECT * FROM events
-                WHERE date(starts) > date('now')
+                WHERE date(starts) >= date('now')
                 ORDER BY starts ASC
                 LIMIT %d;""" % n
         r = self.cursor.execute(q)
         o = []
-        # TODO: lock when capacity is full
-        # TODO: lock N hours before event starts
         for row in r.fetchall():
             o.append({
                 'id': row[0],
@@ -39,10 +39,19 @@ class Presence():
                 'location': row[4],
                 'capacity': row[5],
                 'courts': row[6],
-                'full': False, # TODO
-                'locked': False # TODO
+                'locked': self.soon(row[2])
             })
         return {'data': o}
+
+    def capacity(self, eventid, capacity):
+        if self.is_admin:
+            q = """UPDATE events SET capacity = %d
+                    WHERE id = %d""" % (int(capacity), int(eventid))
+            r = self.cursor.execute(q)
+            self.conn.commit()
+            return {'data': 'Event updated'}
+        else:
+            return {'error': 'You are not admin'}
 
     def presence(self, eventid):
         q = """SELECT users.name,
@@ -60,7 +69,17 @@ class Presence():
                 'username': row[0],
                 'userid': row[1],
                 'guestname': row[2],
-                'datetime': row[3]
+                'datetime': self.utc2local(row[3])
+            })
+        # guests
+        q = """SELECT * FROM presence
+               WHERE eventid = %d
+               AND guestname != "";""" % int(eventid)
+        r = self.cursor.execute(q)
+        for row in r.fetchall():
+            o.append({
+                'guestname': row[3],
+                'datetime': self.utc2local(row[4])
             })
         return {'data': o}
 
@@ -71,12 +90,18 @@ class Presence():
         r = self.cursor.execute(q)
         self.conn.commit()
         # TODO: sent comment id
-        return {'data': 'Comment added'}
+        return {'data': 'OK'}
 
     def comments(self, eventid):
-        q = """SELECT *
-                FROM comments
+        q = """SELECT comments.id,
+                    comments.eventid,
+                    comments.userid,
+                    comments.datetime,
+                    comments.text,
+                    users.name
+                FROM comments, users
                 WHERE eventid = %d
+                AND users.id = comments.userid
                 ORDER BY datetime DESC;""" % int(eventid)
         r = self.cursor.execute(q)
         o = []
@@ -86,16 +111,34 @@ class Presence():
                 'id': row[0],
                 'eventid': row[1],
                 'userid': row[2],
-                'datetime': row[3],
-                'text': row[4]
+                'datetime': self.utc2local(row[3]),
+                'text': row[4],
+                'name': row[5]
             })
         return {'data': o}
 
     def register_guest(self, guestname, eventid):
-        # only admin
-        return []
+        if self.check_capacity(eventid) >= 1.0:
+            return {'error': 'Capacity is full'}
+        if not self.is_admin:
+            return {'data': 'You are not admin!'}
+        q = """INSERT INTO presence
+               (eventid, userid, guestname)
+               VALUES (%d, -1, "%s")""" % (int(eventid), guestname)
+        r = self.cursor.execute(q)
+        self.conn.commit()
+        return {'data': 'Guest registered'}
+
+    def check_capacity(self, eventid):
+        q = """SELECT count(*) FROM presence WHERE eventid = %d""" % int(eventid)
+        r = self.cursor.execute(q)
+        players = int(r.fetchone()[0])
+        e = self.get_event(int(eventid))
+        return float(players) / e['capacity']
 
     def register(self, eventid):
+        if self.check_capacity(eventid) >= 1.0:
+            return {'error': 'Capacity full'}
         q = """INSERT INTO presence
                 (eventid, userid)
                 VALUES ("%s", "%s");""" % (int(eventid), self.userid)
@@ -112,9 +155,19 @@ class Presence():
         return {'data': 'unregistered'}
 
     def default(self):
+        return {'error': 'Unknown or missing method'}
+
+    def get_event(self, eventid):
+        q = """SELECT * FROM events WHERE id = %d""" % eventid
+        r = self.cursor.execute(q).fetchone()
         return {
-            'error': 'Unknown or missing method',
-            'app': self.__doc__
+            'id': r[0],
+            'title': r[1],
+            'starts': r[2],
+            'ends': r[3],
+            'location': r[4],
+            'capacity': r[5],
+            'courts': r[6]
         }
 
     def get_user(self, username):
@@ -137,19 +190,38 @@ class Presence():
         if len(parse_url) > 1:
             methodname = parse_url[1]
             method = getattr(self, methodname, self.default)
+            username = os.getenv('REMOTE_USER', 'anonymous')
+            self.is_admin = username in self.admins
+            user = self.get_user(username)
+            self.userid = user['id']
+            parameters = dict([(k, form.getvalue(k)) for k in form])
+            response = apply(method, [], parameters)
+            response['user'] = user
+            self.output.write('Content-Type: application/json; charset=utf-8\n\n')
+            self.output.write(json.dumps(response) + '\n')
         else:
-            method = self.default
-        username = os.getenv('REMOTE_USER', 'anonymous')
-        user = self.get_user(username)
-        self.userid = user['id']
-        parameters = dict([(k, form.getvalue(k)) for k in form])
-        response = apply(method, [], parameters)
-        response['user'] = user
-        self.output.write('Content-Type: application/json; charset=utf-8\n\n')
-        self.output.write(json.dumps(response) + '\n')
+            self.output.write('Content-Type: text/html; charset=utf-8\n\n')
+            self.output.write(open('index.html').read())
+
+    def soon(self, t):
+        t1 = datetime.datetime.strptime(t, '%Y-%m-%d %H:%M:%S')
+        now = datetime.datetime.now()
+        delta = t1 - now
+        #days = delta.days
+        #hours, remainder = divmod(td.seconds, 3600)
+        #minutes, seconds = divmod(remainder, 60)
+        if delta.days < 1:
+            return True
+        return False
+
+    def utc2local(self, t):
+        t1 = datetime.datetime.strptime(t, '%Y-%m-%d %H:%M:%S')
+        HERE = tz.tzlocal()
+        UTC = tz.gettz('UTC')
+        nt = t1.replace(tzinfo=UTC)
+        return nt.astimezone(HERE).strftime('%d/%m/%Y %H:%M')
 
 if __name__ == '__main__':
-    import datetime
     next_week = datetime.datetime.now() + datetime.timedelta(days=7)
     day = datetime.datetime.today().weekday()
     titles = {
