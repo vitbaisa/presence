@@ -74,29 +74,21 @@
             <div class="card" if={user.admin}>
                 <div class="card-content">
                     <div class="row">
-                        <div class="col s6 input-field">
+                        <div class="col s6 l3 input-field">
                             <input type="text" ref="guest" onchange={add_guest} />
                             <label>Přidat hosta</label>
                         </div>
-                        <div class="col s4 input-field">
-                            <input type="checkbox" />
-                            <label>Oznámit emailem?</label>
-                        </div>
-                        <div class="col s2">
+                        <div class="col s6 l3">
                             <a class="btn btn-primary">Přidat</a>
                         </div>
                     </div>
                     <div class="row">
-                        <div class="col s2 input-field">
+                        <div class="col s6 l3 input-field">
                             <input type="number" value={event.capacity} ref="capacity"
                                     min="1" max="30" />
                             <label>Kapacita</label>
                         </div>
-                        <div class="col s4 input-field">
-                            <input type="checkbox" />
-                            <label>Oznámit emailem?</label>
-                        </div>
-                        <div class="col offset-s4 s2">
+                        <div class="col s6 l3">
                             <a class="btn btn-primary" onclick={change_capacity}>Změnit</a>
                         </div>
                     </div>
@@ -261,5 +253,9 @@
                 }
             })
         }
+
+        this.on('updated', () => {
+            $('input + label').addClass('active');
+        })
     </script>
 </presence>

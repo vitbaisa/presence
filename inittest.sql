@@ -1,8 +1,8 @@
-INSERT INTO users (username, name, email, sessionid, password) VALUES ('vit_baisa', 'Vít Baisa', 'vit.baisa@gmail.com');
-INSERT INTO users (username, name, email, sessionid, password) VALUES ('jan_vodak', 'Jan Vodák', 'vit.baisa+2@gmail.com');
-INSERT INTO users (username, name, email, sessionid, password) VALUES ('zdenek_mejzlik', 'Zdeněk Mejzlík', 'vit.baisa+3@gmail.com');
-INSERT INTO users (username, name, email, sessionid, password) VALUES ('hana_pospisilova', 'Hana Pospíšilová', 'vit.baisa+4@gmail.com');
-INSERT INTO users (username, name, email, sessionid, password) VALUES ('martin_svoboda', 'Martin Svoboda', 'vit.baisa+5@gmail.com');
+INSERT INTO users (username, name, email) VALUES ('vit_baisa', 'Vít Baisa', 'vit.baisa@gmail.com');
+INSERT INTO users (username, name, email) VALUES ('jan_vodak', 'Jan Vodák', 'vit.baisa+2@gmail.com');
+INSERT INTO users (username, name, email) VALUES ('zdenek_mejzlik', 'Zdeněk Mejzlík', 'vit.baisa+3@gmail.com');
+INSERT INTO users (username, name, email) VALUES ('hana_pospisilova', 'Hana Pospíšilová', 'vit.baisa+4@gmail.com');
+INSERT INTO users (username, name, email) VALUES ('martin_svoboda', 'Martin Svoboda', 'vit.baisa+5@gmail.com');
 
 INSERT INTO events (title, starts, ends, location, capacity, courts) VALUES ('Čtvrtek, volná hra', '2018-03-22 19:00:00', '2018-03-22 21:00:00', 'Zetor', 20, 4);
 INSERT INTO events (title, starts, ends, location, capacity, courts) VALUES ('Neděle, volná hra', '2018-03-25 19:00:00', '2018-03-25 21:00:00', 'Zetor', 16, 4);

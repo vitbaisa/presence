@@ -178,8 +178,7 @@ class Presence():
                 'id': r[0],
                 'username': r[1],
                 'name': r[2],
-                'last_access': r[3],
-                'email': r[4],
+                'email': r[3],
                 'admin': r[1] in self.admins
             }
         return {}
@@ -246,3 +245,4 @@ if __name__ == '__main__':
             VALUES ("%(title)s", "%(starts)s", "%(ends)s",
             "%(location)s", %(capacity)d, %(courts)d);""" % event
     cursor.execute(q)
+    conn.commit()
