@@ -34,8 +34,8 @@ class Presence():
             o.append({
                 'id': row[0],
                 'title': row[1],
-                'starts': row[2],
-                'ends': row[3],
+                'starts': self.utc2local(row[2]),
+                'ends': self.utc2local(row[3]),
                 'location': row[4],
                 'capacity': row[5],
                 'courts': row[6],
