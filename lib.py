@@ -179,7 +179,7 @@ class Presence():
                 'username': r[1],
                 'name': r[2],
                 'email': r[3],
-                'admin': r[1] in self.admins
+                'admin': r[1].encode('utf-8') in self.admins
             }
         return {}
 

@@ -8,19 +8,18 @@
                 </li>
             </ul>
         </div>
-    </ul>
+    </div>
     <div class="row">
         <div class="col s12 l6">
             <div class="card">
                 <div class="card-content">
                     <div class="card-title">
-                        {event.starts.split(' ')[0]}
+                        {event.starts}
                         <virtual if={registered}>
-                            <a class="right btn red darken-2" onclick={unregister}>Odhlásit</a>
+                            <a class="right btn red darken-2" onclick={unregister}>Nejdu!</a>
                         </virtual>
-                        <virtual if={!registered}>
-                            <a class="right btn {disabled: presence.length >= event.capacity || event.locked}"
-                                    onclick={register}>Přihlásit</a>
+                        <virtual if={!registered && (presence.length <= event.capacity && !event.locked)}>
+                            <a class="right btn" onclick={register}>Jdu!</a>
                         </virtual>
                     </div>
                     <blockquote if={!registered && presence.length >= event.capacity}>
@@ -38,10 +37,14 @@
                             </tr>
                         </tbody>
                     </table>
-                    <div class="col s12 text-right grey-text">
-                        Obsazenost:
-                        <span class="lighten-2 {red-text: presence.length >= event.capacity}">
-                        {presence.length} / {event.capacity}</span>
+                    <div class="row event-info">
+                        <div class="col s12">
+                            Kapacita: {event.capacity},
+                            počet kurtů: {event.courts},
+                            začátek: {event.ends},
+                            místo: {event.location},
+                            cena: {Math.ceil((event.courts * 200) / presence.length * 2)} Kč
+                        </div>
                     </div>
                 </div>
             </div>

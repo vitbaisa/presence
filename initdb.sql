@@ -1,7 +1,6 @@
 CREATE TABLE users (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    username    CHAR(20) NOT NULL UNIQUE,
-    name        CHAR(50),
+    username    CHAR(30) NOT NULL UNIQUE,
     email       CHAR(50) NOT NULL
 );
 

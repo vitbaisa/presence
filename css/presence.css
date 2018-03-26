@@ -14,9 +14,6 @@ html {
     font-family: 'Open Sans', Arial, sans-serif;
     background-color: #EEE;
 }
-.tabs {
-    background-color: #EEE;
-}
 h1, h2, h3, h4 {
     font-family: 'Open Sans Light', Arial, sans-serif;
 }
@@ -28,4 +25,7 @@ table {
 }
 blockquote {
     clear: both;
+}
+.event-info {
+    margin: 1em 0 0 0;
 }

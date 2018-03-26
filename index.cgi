@@ -1,9 +1,10 @@
 #!/usr/bin/env python
+#coding=utf-8
 
 from lib import Presence
 
 class App(Presence):
-    admins = ['vit_baisa', 'hana_pospisilova', 'martin_svoboda']
+    admins = ['Vít Baisa', 'Zdeněk Mejzlík', 'Hana Pospíšilová', 'Martin Svoboda']
     db = 'presence.db'
 
     def __init__(self):
