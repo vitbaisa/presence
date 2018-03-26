@@ -14,15 +14,13 @@
             <div class="card">
                 <div class="card-content">
                     <div class="card-title">
-                        Účast
-                        <span class="lighten-2 {red-text: presence.length >= event.capacity}">
-                        {presence.length} / {event.capacity}</span>
+                        {event.starts.split(' ')[0]}
                         <virtual if={registered}>
-                            <a class="right btn red darken-2" onclick={unregister}>Odhlásit ({user.name})</a>
+                            <a class="right btn red darken-2" onclick={unregister}>Odhlásit</a>
                         </virtual>
                         <virtual if={!registered}>
                             <a class="right btn {disabled: presence.length >= event.capacity || event.locked}"
-                                    onclick={register}>Přihlásit ({user.name})</a>
+                                    onclick={register}>Přihlásit</a>
                         </virtual>
                     </div>
                     <blockquote if={!registered && presence.length >= event.capacity}>
@@ -40,6 +38,11 @@
                             </tr>
                         </tbody>
                     </table>
+                    <div class="col s12 text-right grey-text">
+                        Obsazenost:
+                        <span class="lighten-2 {red-text: presence.length >= event.capacity}">
+                        {presence.length} / {event.capacity}</span>
+                    </div>
                 </div>
             </div>
         </div>

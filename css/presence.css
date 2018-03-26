@@ -26,3 +26,6 @@ th, td {
 table {
     margin-top: 1em;
 }
+blockquote {
+    clear: both;
+}
