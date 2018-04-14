@@ -7,27 +7,34 @@ import cgi
 import sqlite3
 import json
 import datetime
+import smtplib
+from email.mime.text import MIMEText
 from dateutil import tz
 
 class Presence():
     "A lightweight event-presence manager"
 
-    show_last_n = 3
-    default_capacity = 16
-    lock_n_hours_before = 24 # TODO
     is_admin = False
 
     def __init__(self, database):
         self.conn = sqlite3.connect(database)
         self.cursor = self.conn.cursor()
-        self.output = sys.stdout
+
+    def sendmail(self, text="", addresses=[], subject=""):
+        sender = 'vit.baisa@sketchengine.co.uk'
+        msg = MIMEText(text)
+        msg['Subject'] = subject
+        msg['From'] = sender
+        msg['To'] = ','.join(addresses)
+        server = smtplib.SMTP('localhost', timeout=10)
+        server.sendmail(sender, addresses, msg.as_string())
+        server.quit()
 
     def events(self):
-        n = self.show_last_n
         q = """SELECT * FROM events
                 WHERE date(starts) >= date('now')
-                ORDER BY starts ASC
-                LIMIT %d;""" % n
+                AND date(starts) < date('now', '+8 days')
+                ORDER BY starts ASC"""
         r = self.cursor.execute(q)
         o = []
         for row in r.fetchall():
@@ -35,7 +42,7 @@ class Presence():
                 'id': row[0],
                 'title': row[1],
                 'starts': self.utc2local(row[2]),
-                'ends': self.utc2local(row[3]),
+                'lasts': row[3],
                 'location': row[4],
                 'capacity': row[5],
                 'courts': row[6],
@@ -53,8 +60,22 @@ class Presence():
         else:
             return {'error': 'You are not admin'}
 
+    def users(self):
+        q = "SELECT id, username, nickname FROM users;"
+        r = self.cursor.execute(q)
+        o = []
+        for row in r.fetchall():
+            o.append({
+                'id': int(row[0]),
+                'username': row[1],
+                'nickname': row[2]
+            })
+        return {'data': o}
+
     def presence(self, eventid):
-        q = """SELECT users.name,
+        q = """SELECT users.username,
+                      users.nickname,
+                      users.gender,
                       presence.userid,
                       presence.guestname,
                       presence.datetime
@@ -67,9 +88,11 @@ class Presence():
         for row in r.fetchall():
             o.append({
                 'username': row[0],
-                'userid': row[1],
-                'guestname': row[2],
-                'datetime': self.utc2local(row[3])
+                'nickname': row[1],
+                'gender': row[2],
+                'userid': row[3],
+                'guestname': row[4],
+                'datetime': self.utc2local(row[5])
             })
         # guests
         q = """SELECT * FROM presence
@@ -89,7 +112,7 @@ class Presence():
                 VALUES (%d, %d, "%s")""" % (int(eventid), self.userid, comment)
         r = self.cursor.execute(q)
         self.conn.commit()
-        # TODO: sent comment id
+        # TODO: send comment id
         return {'data': 'OK'}
 
     def comments(self, eventid):
@@ -98,7 +121,7 @@ class Presence():
                     comments.userid,
                     comments.datetime,
                     comments.text,
-                    users.name
+                    users.username
                 FROM comments, users
                 WHERE eventid = %d
                 AND users.id = comments.userid
@@ -116,6 +139,26 @@ class Presence():
                 'name': row[5]
             })
         return {'data': o}
+
+    def user_can_attend(self, userid, eventid):
+        # TODO
+        return True
+
+    def create_event(self, users=[], title="", starts="", ends="", location="", capacity=0, courts=0):
+        q = """INSERT INTO events
+               (title, starts, ends, location, capacity, courts)
+               VALUES
+               ("%s", "%s", "%s", "%s", %d, %d);""" %\
+               (title, starts, ends, location, capacity, courts)
+        self.cursor.execute(q)
+        self.conn.commit()
+        # get eventid = last_insert_rowid
+        for u in users:
+            q = """INSERT INTO restriction (eventid, userid) VALUES (%d, %d)""" %\
+                    (eventid, u)
+            self.cursor.execute(q)
+            self.conn.commit()
+        return {'data': 'Event ID#%d created' % eventid}
 
     def register_guest(self, guestname, eventid):
         if self.check_capacity(eventid) >= 1.0:
@@ -139,10 +182,10 @@ class Presence():
     def register(self, eventid):
         if self.check_capacity(eventid) >= 1.0:
             return {'error': 'Capacity full'}
-        q = """INSERT INTO presence
-                (eventid, userid)
-                VALUES ("%s", "%s");""" % (int(eventid), self.userid)
+        q = """INSERT INTO presence (eventid, userid) VALUES (%d, %d);""" %\
+                (int(eventid), self.userid)
         r = self.cursor.execute(q)
+        # TODO: last_insert_rowid
         self.conn.commit()
         return {'data': 'registered'}
 
@@ -177,8 +220,9 @@ class Presence():
             return {
                 'id': r[0],
                 'username': r[1],
-                'name': r[2],
+                'nickname': r[2],
                 'email': r[3],
+                'gender': r[4],
                 'admin': r[1].encode('utf-8') in self.admins
             }
         return {}
@@ -196,19 +240,16 @@ class Presence():
             parameters = dict([(k, form.getvalue(k)) for k in form])
             response = apply(method, [], parameters)
             response['user'] = user
-            self.output.write('Content-Type: application/json; charset=utf-8\n\n')
-            self.output.write(json.dumps(response) + '\n')
+            sys.stdout.write('Content-Type: application/json; charset=utf-8\n\n')
+            sys.stdout.write(json.dumps(response) + '\n')
         else:
-            self.output.write('Content-Type: text/html; charset=utf-8\n\n')
-            self.output.write(open('index.html').read())
+            sys.stdout.write('Content-Type: text/html; charset=utf-8\n\n')
+            sys.stdout.write(open('index.html').read())
 
     def soon(self, t):
         t1 = datetime.datetime.strptime(t, '%Y-%m-%d %H:%M:%S')
         now = datetime.datetime.now()
         delta = t1 - now
-        #days = delta.days
-        #hours, remainder = divmod(td.seconds, 3600)
-        #minutes, seconds = divmod(remainder, 60)
         if delta.days < 1:
             return True
         return False

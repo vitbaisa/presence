@@ -22,28 +22,48 @@
                             <a class="right btn" onclick={register}>Jdu!</a>
                         </virtual>
                     </div>
-                    <blockquote if={!registered && presence.length >= event.capacity}>
+                    <p if={!registered && presence.length >= event.capacity} class="red-text text-lighten-2">
                         Termín je již plně obsazen, nelze se přihlásit.
-                    </blockquote>
-                    <blockquote if={!registered && event.locked}>
+                    </p>
+                    <p if={!registered && event.locked} class="red-text text-lighten-2">
                         Nelze se přihlašovat méně než 24 hodin předem.
-                    </blockquote>
+                    </p>
                     <table class="table striped">
                         <tbody>
-                            <tr each={item, i in presence} class={red-text: item.userid == user.id}>
+                            <tr each={item, i in presence}>
                                 <td>{i+1}</td>
-                                <td>{item.guestname || item.username} <span if={item.guestname}>(host)</span></td>
-                                <td class="text-right">{item.datetime}</td>
+                                <td class={bold: item.userid == user.id}>
+                                    {item.guestname || item.nickname || item.username}
+                                    <span if={item.guestname}>(host)</span>
+                                </td>
+                                <td class="text-right nowrap">{item.datetime}</td>
+                            </tr>
+                            <tr if={user.admin}>
+                                <td>{presence.length + 1}</td>
+                                <td><input type="text" ref="guest" /></td>
+                                <td style="text-align: right;">
+                                    <a class="btn btn-primary"
+                                            title="Přidat hosta"
+                                            onclick={add_guest}>Přidat</a>
+                                </td>
                             </tr>
                         </tbody>
                     </table>
                     <div class="row event-info">
                         <div class="col s12">
-                            Kapacita: {event.capacity},
-                            počet kurtů: {event.courts},
-                            začátek: {event.ends},
-                            místo: {event.location},
-                            cena: {Math.ceil((event.courts * 200) / presence.length * 2)} Kč
+                            kapacita:
+                            <div if={user.admin} style="display: inline;">
+                                <input type="number" min="4" max="100"
+                                        style="width: auto;" size="2"
+                                        onblur={change_capacity}
+                                        ref="capacity" value={event.capacity} />,
+                            </div>
+                            <div if={!user.admin}>
+                                {event.capacity},
+                            </div>
+                            kurty: {event.courts},
+                            <!-- místo: {event.location} -->
+                            <span if={presence.length}>, cena: ~{Math.ceil((event.courts * 200) / presence.length * 2)} Kč</span>
                         </div>
                     </div>
                 </div>
@@ -62,10 +82,15 @@
                     <form>
                         <div class="input-field">
                             <textarea onchange={changed_area} ref="new_comment"
-                                    if={show_textarea}
                                     class="materialize-textarea">
                             </textarea>
                             <label if={show_textarea}>Přidat komentář</label>
+                        </div>
+                        <div class="input-field">
+                            <label>
+                                <input type="checkbox" id="inform-admin" />
+                                <span>Dát vědět organizátorům</span>
+                            </label>
                         </div>
                         <div class="input-field">
                             <a class="btn" onclick={add_comment}>Přidat komentář</a>
@@ -79,23 +104,53 @@
         <div class="col s12">
             <div class="card" if={user.admin}>
                 <div class="card-content">
+                    <div class="card-title">Přidat událost</div>
                     <div class="row">
-                        <div class="col s6 l3 input-field">
-                            <input type="text" ref="guest" onchange={add_guest} />
-                            <label>Přidat hosta</label>
+                        <div class="col s12 m6 input-field">
+                            <input type="text" ref="eventname" />
+                            <label>Název akce</label>
                         </div>
-                        <div class="col s6 l3">
-                            <a class="btn btn-primary">Přidat</a>
+                        <div class="col s6 m3 input-field">
+                            <input type="text" class="datepicker" ref="date">
+                            <label>Datum</label>
+                        </div>
+                        <div class="col s6 m3 input-field">
+                            <input type="text" class="timepicker" ref="time">
+                            <label>Čas</label>
+                        </div>
+                        <div class="col s3 m3 input-field">
+                            <input type="number" min="1" ref="courts"
+                                    value="4" />
+                            <label>Kurty</label>
+                        </div>
+                        <div class="col s3 m3 input-field">
+                            <input type="number" min="1" ref="ncapacity"
+                                    value="16" />
+                            <label>Kapacita</label>
+                        </div>
+                        <div class="col s3 input-field">
+                            <input type="checkbox" ref="announce-new-event" />
+                            <label>Email</label>
                         </div>
                     </div>
                     <div class="row">
-                        <div class="col s6 l3 input-field">
-                            <input type="number" value={event.capacity} ref="capacity"
-                                    min="1" max="30" />
-                            <label>Kapacita</label>
+                        <div class="col s12 input-field">
+                            <ul>
+                                <li class="input-field">
+                                    <input type="checkbox" checked id="uid_all" name="suser" />
+                                    <label for="uid_all" class="active">Všichni</label>
+                                </li>
+                                <li each={u in users} class="input-field">
+                                    <input type="checkbox" name="suser" id={"uid_" + u.id} />
+                                    <label for={"uid_" + u.id}>{u.nickname || u.username}</label>
+                                </li>
+                            </ul>
                         </div>
-                        <div class="col s6 l3">
-                            <a class="btn btn-primary" onclick={change_capacity}>Změnit</a>
+                    </div>
+                    <div class="row">
+                        <div class="col s12">
+                            <a class="btn btn-primary" onclick={add_event}>
+                                Vytvořit událost</a>
                         </div>
                     </div>
                 </div>
@@ -104,11 +159,40 @@
     </div>
 
     <style>
+        @media only screen and (max-width: 500px) {
+            .tabs .tab a {
+                padding: 0 .2em;
+            }
+            .card .card-content {
+                padding: .5em;
+            }
+            .row .col {
+                padding: 0 .2em;
+            }
+            .row {
+                margin-bottom: .2em;
+            }
+            .card {
+                margin-bottom: .2em;
+            }
+            .card .card-title {
+                font-size: 1.5em;
+            }
+        }
+        .tabs .tab a.active {
+            background-color: #FFECEC;
+        }
+        .nowrap {
+            white-space: nowrap;
+        }
         .text-right {
             text-align: right;
         }
         .text-center {
             text-align: center;
+        }
+        .bold {
+            font-weight: bold;
         }
     </style>
 
@@ -119,7 +203,7 @@
         this.event_pos = 0
         this.registered = false
         this.user = {}
-        this.show_textarea = false
+        this.users = []
 
         change_event(ev) {
             this.event = ev.item.ev
@@ -141,6 +225,20 @@
                 }
             })
         }
+
+        get_users() {
+            $.ajax({
+                url: cgi + '/users',
+                success: (d) => {
+                    this.users = d.data
+                    this.update()
+                },
+                error: (d) => {
+                    console.log(d)
+                }
+            })
+        }
+        this.get_users()
 
         get_presence() {
             $.ajax({
@@ -178,20 +276,15 @@
         }
 
         add_comment(ev) {
-            if (!this.show_textarea) {
-                this.show_textarea = true
-                return false
-            }
             let comment = this.refs.new_comment.value.trim()
             if (!comment.length) {
-                this.show_textarea = true
                 return false
             }
             $.ajax({
                 url: cgi + '/add_comment?eventid=' + this.event.id + '&comment=' + comment,
                 success: (d) => {
+                    this.refs.new_comment.value = ""
                     this.get_comments()
-                    this.show_textarea = false
                     this.update()
                 },
                 error: (d) => {
@@ -205,7 +298,6 @@
             $.ajax({
                 url: cgi + '/events',
                 success: (d) => {
-                    console.log(d)
                     this.events = d.data 
                     this.event = this.events[0]
                     this.user = d.user
@@ -262,6 +354,17 @@
 
         this.on('updated', () => {
             $('input + label').addClass('active');
+            $('.timepicker').timepicker({
+                defaultTime: '19:00',
+                cancel: 'Zrušit',
+                clear: 'Reset',
+                done: 'OK'
+            })
+            $('.datepicker').datepicker({
+                done: 'OK',
+                clear: 'Reset',
+                cancel: 'Zrušit'
+            })
         })
     </script>
 </presence>
