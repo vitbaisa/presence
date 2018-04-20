@@ -6,10 +6,13 @@
                     <a onclick={change_event} title="{ev.starts}/{ev.location}"
                             href="#">{ev.title}</a>
                 </li>
+                <li class="tab col s12" if={!events.length}>
+                    <a>Není naplánovaná žádná událost!</a>
+                </li>
             </ul>
         </div>
     </div>
-    <div class="row">
+    <div class="row" if={events.length}>
         <div class="col s12 l6">
             <div class="card">
                 <div class="card-content">
@@ -56,14 +59,18 @@
                                 <input type="number" min="4" max="100"
                                         style="width: auto;" size="2"
                                         onblur={change_capacity}
-                                        ref="capacity" value={event.capacity} />,
+                                        ref="ccapacity" value={event.capacity} />
                             </div>
-                            <div if={!user.admin}>
-                                {event.capacity},
+                            <div if={!user.admin}>{event.capacity}</div>
+                            kurty:
+                            <div if={user.admin} style="display: inline;">
+                                <input type="number" min="1" max="6"
+                                        style="width: auto;" size="1"
+                                        onblur={change_courts}
+                                        ref="ccourts" value={event.courts} />
                             </div>
-                            kurty: {event.courts},
-                            <!-- místo: {event.location} -->
-                            <span if={presence.length}>, cena: ~{Math.ceil((event.courts * 200) / presence.length * 2)} Kč</span>
+                            <div if={!user.admin}>{event.courts}</div>
+                            <span if={presence.length}>cena: ~{Math.ceil((event.courts * 200) / presence.length * 2)} Kč</span>
                         </div>
                     </div>
                 </div>
@@ -84,16 +91,12 @@
                             <textarea onchange={changed_area} ref="new_comment"
                                     class="materialize-textarea">
                             </textarea>
-                            <label if={show_textarea}>Přidat komentář</label>
                         </div>
-                        <div class="input-field">
-                            <label>
-                                <input type="checkbox" id="inform-admin" />
-                                <span>Dát vědět organizátorům</span>
-                            </label>
-                        </div>
-                        <div class="input-field">
+                        <div>
                             <a class="btn" onclick={add_comment}>Přidat komentář</a>
+                            &nbsp;&nbsp;
+                            <input type="checkbox" ref="anmail" id="anmail" />
+                            <label for="anmail">Poslat adminům</label>
                         </div>
                     </form>
                 </div>
@@ -110,16 +113,20 @@
                             <input type="text" ref="eventname" />
                             <label>Název akce</label>
                         </div>
-                        <div class="col s6 m3 input-field">
-                            <input type="text" class="datepicker" ref="date">
+                        <div class="col s6 m2 input-field">
+                            <input type="text" ref="date">
                             <label>Datum</label>
                         </div>
-                        <div class="col s6 m3 input-field">
-                            <input type="text" class="timepicker" ref="time">
+                        <div class="col s6 m2 input-field">
+                            <input type="text" ref="time" value="19:00:00">
                             <label>Čas</label>
                         </div>
+                        <div class="col s6 m2 input-field">
+                            <input type="number" ref="nduration" value="2" />
+                            <label>Trvání</label>
+                        </div>
                         <div class="col s3 m3 input-field">
-                            <input type="number" min="1" ref="courts"
+                            <input type="number" min="1" ref="ncourts"
                                     value="4" />
                             <label>Kurty</label>
                         </div>
@@ -128,20 +135,25 @@
                                     value="16" />
                             <label>Kapacita</label>
                         </div>
-                        <div class="col s3 input-field">
-                            <input type="checkbox" ref="announce-new-event" />
-                            <label>Email</label>
+                        <div class="col s3 m3 input-field">
+                            <input type="text" value="Zetor" ref="nlocation" />
+                            <label>Místo</label>
+                        </div>
+                        <div class="col s3">
+                            <input type="checkbox" id="aevent" ref="aevent" />
+                            <label for="aevent">Email</label>
                         </div>
                     </div>
                     <div class="row">
-                        <div class="col s12 input-field">
+                        <div class="col s12">
                             <ul>
-                                <li class="input-field">
-                                    <input type="checkbox" checked id="uid_all" name="suser" />
+                                <li>
+                                    <input type="checkbox" checked id="uid_all" name="suser" onchange={check_all} />
                                     <label for="uid_all" class="active">Všichni</label>
                                 </li>
-                                <li each={u in users} class="input-field">
-                                    <input type="checkbox" name="suser" id={"uid_" + u.id} />
+                                <li each={u in users}>
+                                    <input type="checkbox" name="suser"
+                                            id={"uid_" + u.id} data-id={u.id} />
                                     <label for={"uid_" + u.id}>{u.nickname || u.username}</label>
                                 </li>
                             </ul>
@@ -149,7 +161,7 @@
                     </div>
                     <div class="row">
                         <div class="col s12">
-                            <a class="btn btn-primary" onclick={add_event}>
+                            <a class="btn btn-primary" onclick={create_event}>
                                 Vytvořit událost</a>
                         </div>
                     </div>
@@ -212,16 +224,70 @@
             this.update()
         }
 
-        change_capacity(ev) {
-            let capacity = this.refs.capacity.value
+        change_courts(ev) {
+            let courts = this.refs.ccourts.value
             $.ajax({
-                url: cgi + '/capacity?eventid=' + this.event.id + '&capacity=' + capacity,
+                url: cgi + '/courts?eventid=' + this.event.id
+                        + '&courts=' + courts,
                 success: (d) => {
-                    // TODO: only update capacity
-                    this.get_events()
+                    this.event.courts = courts
+                    this.update()
                 },
                 error: (d) => {
                     console.log(d);
+                }
+            })
+
+        }
+
+        change_capacity(ev) {
+            let capacity = this.refs.ccapacity.value
+            $.ajax({
+                url: cgi + '/capacity?eventid=' + this.event.id + '&capacity=' + capacity,
+                success: (d) => {
+                    this.event.capacity = capacity
+                    this.update()
+                },
+                error: (d) => {
+                    console.log(d);
+                }
+            })
+        }
+
+        check_all(ev) {
+            $('input[id^="uid_"]').prop('checked', $(ev.target).is(':checked'))
+        }
+
+        create_event() {
+            let users = ''
+            if ($('input#uid_all').not(':checked')) {
+                let userarray = []
+                $('input[id^="uid_"]:checked').each((i, e) => {
+                    userarray.push(e.dataset.id)
+                })
+                users = userarray.join(',')
+            }
+            console.log('users:', users)
+            $.ajax({
+                url: cgi + '/create_event?title=' + this.refs.eventname.value +
+                    '&starts=' + this.refs.date.value + " " + this.refs.time.value +
+                    '&duration=' + this.refs.nduration.value +
+                    '&users=' + users +
+                    '&location=' + this.refs.nlocation.value +
+                    '&capacity=' + this.refs.ncapacity.value +
+                    '&courts=' + this.refs.ncourts.value +
+                    '&announce=' + (this.refs.aevent.checked ? '1' : '0'),
+                success: (d) => {
+                    this.refs.date.value = ''
+                    this.refs.time.value = ''
+                    this.refs.nlocation.value = 'Zetor'
+                    this.refs.ncourts.value = 4
+                    this.refs.ncapacity = 16
+                    this.refs.eventname.value = ''
+                    this.get_events()
+                },
+                error: (d) => {
+                    console.log('ERROR', d)
                 }
             })
         }
@@ -254,7 +320,7 @@
                     this.update()
                 },
                 error: (d) => {
-                    console.log(d);
+                    console.log(d)
                 }
             })
         }
@@ -281,7 +347,9 @@
                 return false
             }
             $.ajax({
-                url: cgi + '/add_comment?eventid=' + this.event.id + '&comment=' + comment,
+                url: cgi + '/add_comment?eventid=' + this.event.id +
+                        '&comment=' + comment +
+                        '&announce=' + (this.refs.anmail.checked ? '1' : '0'),
                 success: (d) => {
                     this.refs.new_comment.value = ""
                     this.get_comments()
@@ -298,9 +366,12 @@
             $.ajax({
                 url: cgi + '/events',
                 success: (d) => {
+                    this.user = d.user
+                    if (!d.data.length) {
+                        return
+                    }
                     this.events = d.data 
                     this.event = this.events[0]
-                    this.user = d.user
                     this.get_presence()
                     this.get_comments()
                     this.update()
@@ -354,17 +425,6 @@
 
         this.on('updated', () => {
             $('input + label').addClass('active');
-            $('.timepicker').timepicker({
-                defaultTime: '19:00',
-                cancel: 'Zrušit',
-                clear: 'Reset',
-                done: 'OK'
-            })
-            $('.datepicker').datepicker({
-                done: 'OK',
-                clear: 'Reset',
-                cancel: 'Zrušit'
-            })
         })
     </script>
 </presence>

@@ -23,7 +23,8 @@ CREATE TABLE presence (
     guestname   CHAR(20),
     datetime    DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (eventid) REFERENCES events(id),
-    FOREIGN KEY (userid) REFERENCES users(id)
+    FOREIGN KEY (userid) REFERENCES users(id),
+    UNIQUE (eventid, userid) ON CONFLICT REPLACE
 );
 
 CREATE TABLE comments (

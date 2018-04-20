@@ -21,7 +21,7 @@ class Presence():
         self.cursor = self.conn.cursor()
 
     def sendmail(self, text="", addresses=[], subject=""):
-        sender = 'vit.baisa@sketchengine.co.uk'
+        sender = 'noreply@sketchengine.co.uk'
         msg = MIMEText(text)
         msg['Subject'] = subject
         msg['From'] = sender
@@ -41,7 +41,7 @@ class Presence():
             o.append({
                 'id': row[0],
                 'title': row[1],
-                'starts': self.utc2local(row[2]),
+                'starts': row[2],
                 'lasts': row[3],
                 'location': row[4],
                 'capacity': row[5],
@@ -49,6 +49,17 @@ class Presence():
                 'locked': self.soon(row[2])
             })
         return {'data': o}
+
+    def courts(self, eventid, courts):
+        if self.is_admin:
+            q = """UPDATE events SET courts = %d
+                    WHERE id = %d""" % (int(courts), int(eventid))
+            r = self.cursor.execute(q)
+            self.conn.commit()
+            return {'data': 'Event updated'}
+        else:
+            return {'error': 'You are not admin'}
+
 
     def capacity(self, eventid, capacity):
         if self.is_admin:
@@ -61,21 +72,21 @@ class Presence():
             return {'error': 'You are not admin'}
 
     def users(self):
-        q = "SELECT id, username, nickname FROM users;"
+        q = "SELECT id, username, nickname, email FROM users;"
         r = self.cursor.execute(q)
         o = []
         for row in r.fetchall():
             o.append({
                 'id': int(row[0]),
                 'username': row[1],
-                'nickname': row[2]
+                'nickname': row[2],
+                'email': row[3]
             })
         return {'data': o}
 
     def presence(self, eventid):
         q = """SELECT users.username,
                       users.nickname,
-                      users.gender,
                       presence.userid,
                       presence.guestname,
                       presence.datetime
@@ -89,10 +100,9 @@ class Presence():
             o.append({
                 'username': row[0],
                 'nickname': row[1],
-                'gender': row[2],
-                'userid': row[3],
-                'guestname': row[4],
-                'datetime': self.utc2local(row[5])
+                'userid': row[2],
+                'guestname': row[3],
+                'datetime': row[4]
             })
         # guests
         q = """SELECT * FROM presence
@@ -102,15 +112,20 @@ class Presence():
         for row in r.fetchall():
             o.append({
                 'guestname': row[3],
-                'datetime': self.utc2local(row[4])
+                'datetime': row[4]
             })
         return {'data': o}
 
-    def add_comment(self, eventid, comment):
+    def add_comment(self, eventid, comment, announce="0"):
         q = """INSERT INTO comments
                 (eventid, userid, text)
                 VALUES (%d, %d, "%s")""" % (int(eventid), self.userid, comment)
-        r = self.cursor.execute(q)
+        if int(announce):
+            ev = self.get_event(int(eventid))
+            subject = "%s komentoval(a) událost %s (%s)" %\
+                    (self.user['username'].encode('utf-8'), ev['title'].encode('utf-8'), ev['starts'].encode('utf-8'))
+            self.sendmail(comment, self.admin_mails, subject)
+        self.cursor.execute(q)
         self.conn.commit()
         # TODO: send comment id
         return {'data': 'OK'}
@@ -128,37 +143,42 @@ class Presence():
                 ORDER BY datetime DESC;""" % int(eventid)
         r = self.cursor.execute(q)
         o = []
-        # TODO: use row_factory
         for row in r.fetchall():
             o.append({
                 'id': row[0],
                 'eventid': row[1],
                 'userid': row[2],
-                'datetime': self.utc2local(row[3]),
+                'datetime': row[3],
                 'text': row[4],
                 'name': row[5]
             })
         return {'data': o}
 
-    def user_can_attend(self, userid, eventid):
-        # TODO
-        return True
-
-    def create_event(self, users=[], title="", starts="", ends="", location="", capacity=0, courts=0):
+    def create_event(self, users="", title="", starts="", duration=2,
+            location="Zetor", capacity=0, courts=0, announce=0):
+        if not self.is_admin:
+            return {'error': 'Only admin can create an event'}
         q = """INSERT INTO events
-               (title, starts, ends, location, capacity, courts)
-               VALUES
-               ("%s", "%s", "%s", "%s", %d, %d);""" %\
-               (title, starts, ends, location, capacity, courts)
+               (title, starts, duration, location, capacity, courts, restriction)
+               VALUES ("%s", "%s", %d, "%s", %d, %d, "%s");""" %\
+               (title, starts, int(duration), location, int(capacity), int(courts), users)
         self.cursor.execute(q)
         self.conn.commit()
-        # get eventid = last_insert_rowid
-        for u in users:
-            q = """INSERT INTO restriction (eventid, userid) VALUES (%d, %d)""" %\
-                    (eventid, u)
-            self.cursor.execute(q)
-            self.conn.commit()
-        return {'data': 'Event ID#%d created' % eventid}
+        lastrowid = self.cursor.execute("SELECT last_insert_rowid();").fetchone()[0]
+        if int(announce):
+            emails = []
+            d = dict([(x['id'], x['email']) for x in self.users()['data']])
+            if not users:
+                emails = [x['email'] for x in self.users()['data']]
+            else:
+                for uid in users.split(','):
+                    emails.append(d[int(uid)])
+            body = """%s, %s, %s\n\nPřihlaš se nejpozději 24 hodin předem:\n
+https://vitek.baisa.net/presence/index.cgi/register?eventid=%d&redirect=1\n
+Na tento email neodpovídejte.\n
+Tým Kometa Badec""" % (title, starts, location, lastrowid)
+            self.sendmail(body, emails, 'Přihlášení Kometa')
+        return {'data': 'Event ID#%d created' % lastrowid}
 
     def register_guest(self, guestname, eventid):
         if self.check_capacity(eventid) >= 1.0:
@@ -179,7 +199,7 @@ class Presence():
         e = self.get_event(int(eventid))
         return float(players) / e['capacity']
 
-    def register(self, eventid):
+    def register(self, eventid, redirect='0'):
         if self.check_capacity(eventid) >= 1.0:
             return {'error': 'Capacity full'}
         q = """INSERT INTO presence (eventid, userid) VALUES (%d, %d);""" %\
@@ -207,14 +227,17 @@ class Presence():
             'id': r[0],
             'title': r[1],
             'starts': r[2],
-            'ends': r[3],
+            'duration': r[3],
             'location': r[4],
             'capacity': r[5],
             'courts': r[6]
         }
 
-    def get_user(self, username):
-        q = 'SELECT * FROM users WHERE username = "%s"' % username
+    def get_user(self, username='', userid=''):
+        if username:
+            q = 'SELECT * FROM users WHERE username = "%s";' % username
+        else:
+            q = 'SELECT * FROM users WHERE id = %d;' % int(userid)
         r = self.cursor.execute(q).fetchone()
         if r:
             return {
@@ -222,7 +245,6 @@ class Presence():
                 'username': r[1],
                 'nickname': r[2],
                 'email': r[3],
-                'gender': r[4],
                 'admin': r[1].encode('utf-8') in self.admins
             }
         return {}
@@ -235,31 +257,31 @@ class Presence():
             method = getattr(self, methodname, self.default)
             username = os.getenv('REMOTE_USER', 'anonymous')
             self.is_admin = username in self.admins
-            user = self.get_user(username)
-            self.userid = user['id']
+            self.user = self.get_user(username)
+            self.userid = self.user['id']
             parameters = dict([(k, form.getvalue(k)) for k in form])
             response = apply(method, [], parameters)
-            response['user'] = user
-            sys.stdout.write('Content-Type: application/json; charset=utf-8\n\n')
-            sys.stdout.write(json.dumps(response) + '\n')
+            response['user'] = self.user
+            if 'redirect' in parameters and parameters['redirect'] == '1':
+                sys.stdout.write('Content-Type: text/html; charset=utf-8\n\n')
+                sys.stdout.write(open('index.html#redirected').read())
+            else:
+                sys.stdout.write('Content-Type: application/json; charset=utf-8\n\n')
+                sys.stdout.write(json.dumps(response) + '\n')
         else:
             sys.stdout.write('Content-Type: text/html; charset=utf-8\n\n')
             sys.stdout.write(open('index.html').read())
 
     def soon(self, t):
-        t1 = datetime.datetime.strptime(t, '%Y-%m-%d %H:%M:%S')
-        now = datetime.datetime.now()
-        delta = t1 - now
-        if delta.days < 1:
-            return True
-        return False
-
-    def utc2local(self, t):
-        t1 = datetime.datetime.strptime(t, '%Y-%m-%d %H:%M:%S')
-        HERE = tz.tzlocal()
-        UTC = tz.gettz('UTC')
-        nt = t1.replace(tzinfo=UTC)
-        return nt.astimezone(HERE).strftime('%d/%m/%Y %H:%M')
+        try:
+            t1 = datetime.datetime.strptime(t, '%Y-%m-%d %H:%M:%S')
+            now = datetime.datetime.now()
+            delta = t1 - now
+            if delta.days < 1:
+                return True
+            return False
+        except ValueError:
+            return False
 
 if __name__ == '__main__':
     next_week = datetime.datetime.now() + datetime.timedelta(days=7)
@@ -275,15 +297,15 @@ if __name__ == '__main__':
         'title': titles[day],
         'location': 'Zetor Líšeň',
         'starts': next_week.strftime('%Y-%m-%d 19:00:00'),
-        'ends': next_week.strftime('%Y-%m-%d 21:00:00'),
+        'duration': "2",
         'capacity': capacity[day],
         'courts': courts[day]
     }
     conn = sqlite3.connect('presence.db')
     cursor = conn.cursor()
     q = """INSERT INTO events
-            (title, starts, ends, location, capacity, courts)
-            VALUES ("%(title)s", "%(starts)s", "%(ends)s",
+            (title, starts, duration, location, capacity, courts)
+            VALUES ("%(title)s", "%(starts)s", "%(duration)d",
             "%(location)s", %(capacity)d, %(courts)d);""" % event
     cursor.execute(q)
     conn.commit()

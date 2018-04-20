@@ -5,6 +5,7 @@ from lib import Presence
 
 class App(Presence):
     admins = ['Vít Baisa', 'Zdeněk Mejzlík', 'Hana Pospíšilová', 'Martin Svoboda']
+    admin_mails = ['vit.baisa@gmail.com']
     db = 'presence.db'
 
     def __init__(self):
