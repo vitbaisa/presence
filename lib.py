@@ -34,10 +34,14 @@ class Presence():
         q = """SELECT * FROM events
                 WHERE date(starts) >= date('now')
                 AND date(starts) < date('now', '+8 days')
-                ORDER BY starts ASC"""
+                ORDER BY starts ASC LIMIT 3"""
         r = self.cursor.execute(q)
         o = []
         for row in r.fetchall():
+            restr = row[7]
+            print >>sys.stderr, restr, type(restr)
+            if restr and str(self.userid) not in restr.split(','):
+                continue
             o.append({
                 'id': row[0],
                 'title': row[1],
@@ -48,6 +52,8 @@ class Presence():
                 'courts': row[6],
                 'locked': self.soon(row[2])
             })
+            if len(o) >= 3:
+                break
         return {'data': o}
 
     def courts(self, eventid, courts):
@@ -177,7 +183,7 @@ class Presence():
 https://vitek.baisa.net/presence/index.cgi/register?eventid=%d&redirect=1\n
 Na tento email neodpovídejte.\n
 Tým Kometa Badec""" % (title, starts, location, lastrowid)
-            self.sendmail(body, emails, 'Přihlášení Kometa')
+            self.sendmail(body, emails, 'Nová událost')
         return {'data': 'Event ID#%d created' % lastrowid}
 
     def register_guest(self, guestname, eventid):
@@ -258,13 +264,16 @@ Tým Kometa Badec""" % (title, starts, location, lastrowid)
             username = os.getenv('REMOTE_USER', 'anonymous')
             self.is_admin = username in self.admins
             self.user = self.get_user(username)
+            if not self.user:
+                sys.stdout.write('Content-Type: application/json; charset=utf-8\n\n')
+                sys.stdout.write(json.dumps({'error': 'Uzivatel %s neexistuje!' % username}))
+                return
             self.userid = self.user['id']
             parameters = dict([(k, form.getvalue(k)) for k in form])
             response = apply(method, [], parameters)
             response['user'] = self.user
-            if 'redirect' in parameters and parameters['redirect'] == '1':
-                sys.stdout.write('Content-Type: text/html; charset=utf-8\n\n')
-                sys.stdout.write(open('index.html#redirected').read())
+            if 'redirect' in parameters and 'eventid' in parameters:
+                sys.stdout.write('Location: /presence#%s\n\n' % parameters['eventid'])
             else:
                 sys.stdout.write('Content-Type: application/json; charset=utf-8\n\n')
                 sys.stdout.write(json.dumps(response) + '\n')

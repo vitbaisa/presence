@@ -17,7 +17,7 @@
             <div class="card">
                 <div class="card-content">
                     <div class="card-title">
-                        {event.starts}
+                        <span class="evstarts">{event.starts}</span>
                         <virtual if={registered}>
                             <a class="right btn red darken-2" onclick={unregister}>Nejdu!</a>
                         </virtual>
@@ -47,7 +47,7 @@
                                 <td style="text-align: right;">
                                     <a class="btn btn-primary"
                                             title="Přidat hosta"
-                                            onclick={add_guest}>Přidat</a>
+                                            onclick={add_guest}>Host</a>
                                 </td>
                             </tr>
                         </tbody>
@@ -79,6 +79,9 @@
         <div class="col s12 l6">
             <div class="card">
                 <div class="card-content">
+                    <div class="card-title" if={comments.length}>
+                        Komentáře
+                    </div>
                     <ul class="collection" if={comments.length}>
                         <li each={comment in comments} class="collection-item"
                                 title={comment.datetime}>
@@ -89,11 +92,13 @@
                     <form>
                         <div class="input-field">
                             <textarea onchange={changed_area} ref="new_comment"
-                                    class="materialize-textarea">
+                                    class="materialize-textarea"
+                                    id="new_comment">
                             </textarea>
+                            <label for="new_comment">Tvůj komentář</label>
                         </div>
                         <div>
-                            <a class="btn" onclick={add_comment}>Přidat komentář</a>
+                            <a class="btn" onclick={add_comment}>Poslat</a>
                             &nbsp;&nbsp;
                             <input type="checkbox" ref="anmail" id="anmail" />
                             <label for="anmail">Poslat adminům</label>
@@ -114,7 +119,7 @@
                             <label>Název akce</label>
                         </div>
                         <div class="col s6 m2 input-field">
-                            <input type="text" ref="date">
+                            <input type="text" ref="date" placeholder="RRRR-MM-DD">
                             <label>Datum</label>
                         </div>
                         <div class="col s6 m2 input-field">
@@ -169,6 +174,11 @@
             </div>
         </div>
     </div>
+    <footer>
+        <p>Ňáká připomínka?
+            <a href="mailto:vit.baisa@gmail.com">Dejte vědět</a>.
+        </p>
+    </footer>
 
     <style>
         @media only screen and (max-width: 500px) {
@@ -188,8 +198,14 @@
                 margin-bottom: .2em;
             }
             .card .card-title {
-                font-size: 1.5em;
+                font-size: 1.4em;
             }
+            .input-field.col label {
+                left: 0rem;
+            }
+        }
+        footer {
+            text-align: center;
         }
         .tabs .tab a.active {
             background-color: #FFECEC;
@@ -279,11 +295,13 @@
                     '&announce=' + (this.refs.aevent.checked ? '1' : '0'),
                 success: (d) => {
                     this.refs.date.value = ''
-                    this.refs.time.value = ''
+                    this.refs.time.value = '19:00:00'
                     this.refs.nlocation.value = 'Zetor'
                     this.refs.ncourts.value = 4
                     this.refs.ncapacity = 16
                     this.refs.eventname.value = ''
+                    this.refs.aevent.checked = false
+                    $('input[id^="uid_"]').prop('checked', false)
                     this.get_events()
                 },
                 error: (d) => {
@@ -351,12 +369,15 @@
                         '&comment=' + comment +
                         '&announce=' + (this.refs.anmail.checked ? '1' : '0'),
                 success: (d) => {
-                    this.refs.new_comment.value = ""
                     this.get_comments()
-                    this.update()
                 },
                 error: (d) => {
                     console.log(d)
+                },
+                complete: () => {
+                    this.refs.new_comment.value = ""
+                    this.refs.anmail.checked = false
+                    this.update()
                 }
             })
             return false

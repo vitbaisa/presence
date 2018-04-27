@@ -2,3 +2,4 @@
 *.vim
 .htpasswd
 *.pyc
+inittest.sql
