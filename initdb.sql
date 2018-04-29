@@ -20,11 +20,11 @@ CREATE TABLE presence (
     id          INTEGER PRIMARY KEY,
     eventid     INTEGER NOT NULL,
     userid      INTEGER DEFAULT -1,
-    guestname   CHAR(20),
+    name        CHAR(30),
     datetime    DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (eventid) REFERENCES events(id),
     FOREIGN KEY (userid) REFERENCES users(id),
-    UNIQUE (eventid, userid) ON CONFLICT REPLACE
+    UNIQUE (eventid, name) ON CONFLICT REPLACE
 );
 
 CREATE TABLE comments (

@@ -2,8 +2,9 @@
     <div class="row">
         <div class="col s12">
             <ul class="tabs">
-                <li class="tab col s4" each={ev, i in events}>
+                <li class="tab col s4" each={ev, i in events} id="ev{ev.id}">
                     <a onclick={change_event} title="{ev.starts}/{ev.location}"
+                            class={active: location.hash == '#ev' + ev.id}
                             href="#">{ev.title}</a>
                 </li>
                 <li class="tab col s12" if={!events.length}>
@@ -21,7 +22,7 @@
                         <virtual if={registered}>
                             <a class="right btn red darken-2" onclick={unregister}>Nejdu!</a>
                         </virtual>
-                        <virtual if={!registered && (presence.length <= event.capacity && !event.locked)}>
+                        <virtual if={!registered && presence.length < event.capacity && !event.locked}>
                             <a class="right btn" onclick={register}>Jdu!</a>
                         </virtual>
                     </div>
@@ -36,8 +37,8 @@
                             <tr each={item, i in presence}>
                                 <td>{i+1}</td>
                                 <td class={bold: item.userid == user.id}>
-                                    {item.guestname || item.nickname || item.username}
-                                    <span if={item.guestname}>(host)</span>
+                                    {item.name || item.nickname || item.username}
+                                    <span if={item.name}>(host)</span>
                                 </td>
                                 <td class="text-right nowrap">{item.datetime}</td>
                             </tr>
@@ -344,9 +345,9 @@
         }
 
         add_guest() {
-            let guestname = this.refs.guest.value
+            let name = this.refs.guest.value
             $.ajax({
-                url: cgi + '/register_guest?eventid=' + this.event.id + '&guestname=' + guestname,
+                url: cgi + '/register_guest?eventid=' + this.event.id + '&name=' + name,
                 success: (d) => {
                     this.get_presence()
                     this.refs.guest.value = ""
@@ -392,13 +393,21 @@
                         return
                     }
                     this.events = d.data 
-                    this.event = this.events[0]
+                    let ind = 0
+                    if (location.hash) {
+                        let h = parseInt(location.hash.substr(3))
+                        for (let i=0; i<this.events.length; i++) {
+                           if (this.events[i].id == h) {
+                             ind = i
+                             break
+                           }
+                        }
+                    }
+                    this.event = this.events[ind]
                     this.get_presence()
                     this.get_comments()
                     this.update()
-                    $(document).ready(function(){
-                        $('.tabs').tabs();
-                    });
+                    $('.tabs').tabs();
                 },
                 error: (d) => {
                     console.log(d)

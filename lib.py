@@ -94,7 +94,7 @@ class Presence():
         q = """SELECT users.username,
                       users.nickname,
                       presence.userid,
-                      presence.guestname,
+                      presence.name,
                       presence.datetime
                 FROM presence, users
                 WHERE eventid = %d
@@ -107,17 +107,17 @@ class Presence():
                 'username': row[0],
                 'nickname': row[1],
                 'userid': row[2],
-                'guestname': row[3],
+                'name': row[3],
                 'datetime': row[4]
             })
         # guests
         q = """SELECT * FROM presence
                WHERE eventid = %d
-               AND guestname != "";""" % int(eventid)
+               AND userid = -1;""" % int(eventid)
         r = self.cursor.execute(q)
         for row in r.fetchall():
             o.append({
-                'guestname': row[3],
+                'name': row[3],
                 'datetime': row[4]
             })
         return {'data': o}
@@ -186,14 +186,14 @@ Tým Kometa Badec""" % (title, starts, location, lastrowid)
             self.sendmail(body, emails, 'Nová událost')
         return {'data': 'Event ID#%d created' % lastrowid}
 
-    def register_guest(self, guestname, eventid):
+    def register_guest(self, name, eventid):
         if self.check_capacity(eventid) >= 1.0:
             return {'error': 'Capacity is full'}
         if not self.is_admin:
             return {'data': 'You are not admin!'}
         q = """INSERT INTO presence
-               (eventid, userid, guestname)
-               VALUES (%d, -1, "%s")""" % (int(eventid), guestname)
+               (eventid, name)
+               VALUES (%d, "%s")""" % (int(eventid), name)
         r = self.cursor.execute(q)
         self.conn.commit()
         return {'data': 'Guest registered'}
@@ -273,7 +273,8 @@ Tým Kometa Badec""" % (title, starts, location, lastrowid)
             response = apply(method, [], parameters)
             response['user'] = self.user
             if 'redirect' in parameters and 'eventid' in parameters:
-                sys.stdout.write('Location: /presence#%s\n\n' % parameters['eventid'])
+                sys.stdout.write('Content-Type: text/html; charset=utf-8\n\n')
+                sys.stdout.write(open('redirect.html').read() % str(parameters['eventid']))
             else:
                 sys.stdout.write('Content-Type: application/json; charset=utf-8\n\n')
                 sys.stdout.write(json.dumps(response) + '\n')
@@ -295,6 +296,9 @@ Tým Kometa Badec""" % (title, starts, location, lastrowid)
 if __name__ == '__main__':
     next_week = datetime.datetime.now() + datetime.timedelta(days=7)
     day = datetime.datetime.today().weekday()
+    if day not in [0, 3, 6]:
+        print 'Only Monday, Thursday and Sunday!'
+        exit(1)
     titles = {
         0: 'Pondělí, řízený trénink',
         3: 'Čtvrtek, volná hra',
@@ -306,15 +310,10 @@ if __name__ == '__main__':
         'title': titles[day],
         'location': 'Zetor Líšeň',
         'starts': next_week.strftime('%Y-%m-%d 19:00:00'),
-        'duration': "2",
+        'duration': 2,
         'capacity': capacity[day],
         'courts': courts[day]
     }
-    conn = sqlite3.connect('presence.db')
-    cursor = conn.cursor()
-    q = """INSERT INTO events
-            (title, starts, duration, location, capacity, courts)
-            VALUES ("%(title)s", "%(starts)s", "%(duration)d",
-            "%(location)s", %(capacity)d, %(courts)d);""" % event
-    cursor.execute(q)
-    conn.commit()
+    p = Presence('presence.db')
+    p.create_event(title=event['title'], starts=event['starts'], capacity=event['capacity'],
+            location="Zetor", courts=event['courts'], announce=1)

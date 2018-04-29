@@ -52,6 +52,7 @@ INSERT INTO events (title, starts, restriction) VALUES ('Středa, Vojta', '2018-
 INSERT INTO events (title, starts) VALUES ('Čtvrtek, volná hra',         '2018-05-03 19:00:00');
 
 INSERT INTO presence (eventid, userid) VALUES (1, 1);
+INSERT INTO presence (eventid, name)   VALUES (1, 'Lee Chong Wei');
 INSERT INTO presence (eventid, userid) VALUES (1, 2);
 INSERT INTO presence (eventid, userid) VALUES (1, 3);
 INSERT INTO presence (eventid, userid) VALUES (1, 4);
