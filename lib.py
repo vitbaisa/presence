@@ -173,12 +173,12 @@ class Presence():
         lastrowid = self.cursor.execute("SELECT last_insert_rowid();").fetchone()[0]
         if int(announce):
             emails = []
-            d = dict([(x['id'], x['email']) for x in self.users()['data']])
             if not users:
                 emails = [x['email'] for x in self.users()['data']]
             else:
+                d = dict([(x['id'], x['email']) for x in self.users()['data']])
                 for uid in users.split(','):
-                    emails.append(d[int(uid)])
+                    emails.append(d.get(int(uid), ''))
             body = """%s, %s, %s\n\nPřihlaš se nejpozději 24 hodin předem:\n
 https://vitek.baisa.net/presence/index.cgi/register?eventid=%d&redirect=1\n
 Na tento email neodpovídejte.\n
@@ -315,5 +315,7 @@ if __name__ == '__main__':
         'courts': courts[day]
     }
     p = Presence('presence.db')
-    p.create_event(title=event['title'], starts=event['starts'], capacity=event['capacity'],
-            location="Zetor", courts=event['courts'], announce=1)
+    p.is_admin = True
+    print p.create_event(title=event['title'], starts=event['starts'],
+            capacity=event['capacity'], location="Zetor",
+            courts=event['courts'], announce=0)
