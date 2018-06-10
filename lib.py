@@ -32,14 +32,13 @@ class Presence():
 
     def events(self):
         q = """SELECT * FROM events
-                WHERE date(starts) >= date('now')
+                WHERE date(starts) >= date('now', '+2 hours')
                 AND date(starts) < date('now', '+8 days')
-                ORDER BY starts ASC LIMIT 3"""
+                ORDER BY starts ASC LIMIT 4"""
         r = self.cursor.execute(q)
         o = []
         for row in r.fetchall():
             restr = row[7]
-            print >>sys.stderr, restr, type(restr)
             if restr and str(self.userid) not in restr.split(','):
                 continue
             o.append({
@@ -52,8 +51,6 @@ class Presence():
                 'courts': row[6],
                 'locked': self.soon(row[2])
             })
-            if len(o) >= 3:
-                break
         return {'data': o}
 
     def courts(self, eventid, courts):
@@ -183,7 +180,7 @@ class Presence():
 https://vitek.baisa.net/presence/index.cgi/register?eventid=%d&redirect=1\n
 Na tento email neodpovídejte.\n
 Tým Kometa Badec""" % (title, starts, location, lastrowid)
-            self.sendmail(body, emails, 'Nová událost')
+            self.sendmail(body, emails, 'Nezapomeňte se přihlásit')
         return {'data': 'Event ID#%d created' % lastrowid}
 
     def register_guest(self, name, eventid):
@@ -297,15 +294,20 @@ if __name__ == '__main__':
     next_week = datetime.datetime.now() + datetime.timedelta(days=7)
     day = datetime.datetime.today().weekday()
     if day not in [0, 3, 6]:
-        print 'Only Monday, Thursday and Sunday!'
-        exit(1)
+        exit(0)
     titles = {
-        0: 'Pondělí, řízený trénink',
+        0: 'Pondělí, volná hra',
         3: 'Čtvrtek, volná hra',
         6: 'Neděle, volná hra'
     }
-    capacity = {0: 20, 3: 16, 6: 16}
-    courts = {0: 5, 3: 4, 6: 4}
+    volnahra_lide = "1,2,3,4,5,6,7,8,9,10,11,12,13,14,16,17,18,19,20,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,42,45"
+    emailto = {
+        0: volnahra_lide,
+        3: volnahra_lide,
+        6: volnahra_lide
+    }
+    capacity = {0: 12, 3: 12, 6: 8}
+    courts = {0: 3, 3: 3, 6: 2}
     event = {
         'title': titles[day],
         'location': 'Zetor Líšeň',
@@ -314,8 +316,12 @@ if __name__ == '__main__':
         'capacity': capacity[day],
         'courts': courts[day]
     }
-    p = Presence('presence.db')
-    p.is_admin = True
-    print p.create_event(title=event['title'], starts=event['starts'],
+    try:
+        p = Presence(sys.argv[1])
+        p.is_admin = True
+        p.create_event(title=event['title'], starts=event['starts'],
             capacity=event['capacity'], location="Zetor",
-            courts=event['courts'], announce=0)
+            courts=event['courts'], announce=1, users=emailto[day])
+        print "Event created", event
+    except:
+        print "Failed to create event", event

@@ -2,9 +2,10 @@
     <div class="row">
         <div class="col s12">
             <ul class="tabs">
-                <li class="tab col s4" each={ev, i in events} id="ev{ev.id}">
+                <li class="tab col {s3: events.length >= 4, s4: events.length < 4}"
+                        each={ev, i in events} id="ev{ev.id}">
                     <a onclick={change_event} title="{ev.starts}/{ev.location}"
-                            class={active: location.hash == '#ev' + ev.id}
+                            class={active: (location.hash == '#ev' + ev.id) || !location.hash.length}
                             href="#">{ev.title}</a>
                 </li>
                 <li class="tab col s12" if={!events.length}>
@@ -236,6 +237,7 @@
 
         change_event(ev) {
             this.event = ev.item.ev
+            location.hash = '#ev' + ev.item.ev.id
             this.get_comments()
             this.get_presence()
             this.update()
@@ -284,7 +286,6 @@
                 })
                 users = userarray.join(',')
             }
-            console.log('users:', users)
             $.ajax({
                 url: cgi + '/create_event?title=' + this.refs.eventname.value +
                     '&starts=' + this.refs.date.value + " " + this.refs.time.value +

@@ -1,18 +1,20 @@
-INSERT INTO users (username,           email) VALUES ('Vít Baisa',                             'vit.baisa@gmail.com');
-INSERT INTO users (username,           email) VALUES ('Jan Vodák',                             'jan@vodak.net');
-INSERT INTO users (username,           email) VALUES ('Zdeněk Mejzlík',                        'ZMejzlik@seznam.cz');
-INSERT INTO users (username, nickname, email) VALUES ('Hana Pospíšilová', 'Hanka Pospíšilová', 'hana.pospisilova@stottan.com');
-INSERT INTO users (username, nickname, email) VALUES ('Martin Svoboda',   'Máca',              'macasv@seznam.cz');
+--INSERT INTO users (username,           email) VALUES ('Vít Baisa',                             'vit.baisa@gmail.com');
+--INSERT INTO users (username,           email) VALUES ('Jan Vodák',                             'jan@vodak.net');
+--INSERT INTO users (username,           email) VALUES ('Zdeněk Mejzlík',                        'ZMejzlik@seznam.cz');
+--INSERT INTO users (username, nickname, email) VALUES ('Hana Pospíšilová', 'Hanka Pospíšilová', 'hana.pospisilova@stottan.com');
+--INSERT INTO users (username, nickname, email) VALUES ('Martin Svoboda',   'Máca',              'macasv@seznam.cz');
 
 INSERT INTO users (username, email) VALUES ('Alena Königová',       'konik123@seznam.cz');
 INSERT INTO users (username, email) VALUES ('Barbora Důbravová',    'barunka.dubravova@seznam.cz');
 INSERT INTO users (username, email) VALUES ('Barbora Mikšátková',   'barbora.miks@gmail.com');
+INSERT INTO users (username, email) VALUES ('Barbora Viestová',     'barboraviestova@gmail.com');
 --INSERT INTO users (username, email) VALUES ('Dariusz Nahrebecki',   'peroton@yahoo.de');
 INSERT INTO users (username, email) VALUES ('David Tran',           'tranquoctrung@seznam.cz');
 INSERT INTO users (username, email) VALUES ('Doubravka Brávková',   'doubravka.bravkova@gmail.com');
 INSERT INTO users (username, email) VALUES ('Dušan Nechvátal',      'dunech66@gmail.com');
 INSERT INTO users (username, email) VALUES ('Elisabeth Stavělová',  'stavelovae@seznam.cz');
 INSERT INTO users (username, email) VALUES ('Hana Nechvátalová',    'hanech@seznam.cz');
+INSERT INTO users (username, email) VALUES ('Igor Rokyta',          'igorrokyta@seznam.cz');
 INSERT INTO users (username, email) VALUES ('Irena Blažková',       'IrisBlazkova@seznam.cz');
 INSERT INTO users (username, email) VALUES ('Jan Lošťák',           'lostak.jan@seznam.cz');
 INSERT INTO users (username, email) VALUES ('Jan Vodák',            'jan@vodak.net');
@@ -26,6 +28,8 @@ INSERT INTO users (username, email) VALUES ('Marek Čupa',           'maracupa@g
 INSERT INTO users (username, email) VALUES ('Marián Blažek',        'blazek@malbypokoju.cz');
 INSERT INTO users (username, email) VALUES ('Marián König',         'konig@seznam.cz');
 INSERT INTO users (username, email) VALUES ('Martin Nguyen',        'nguyenkhactuan86@gmail.com');
+INSERT INTO users (username, email) VALUES ('Martin Holčík',        'holcik@uh.cz');
+INSERT INTO users (username, email) VALUES ('Martin Mráz',          'm-mraz@seznam.cz');
 --INSERT INTO users (username, email) VALUES ('Martin Sokol',         'm.sokol@tiscali.cz');
 --INSERT INTO users (username, email) VALUES ('Michal Říha',          'joke@centrum.cz');
 --INSERT INTO users (username, email) VALUES ('Míloslav Sáňka',       'miloslav.sanka@gmail.com');
@@ -33,6 +37,7 @@ INSERT INTO users (username, email) VALUES ('Miroslav Geršl',       'miroslav.g
 --INSERT INTO users (username, email) VALUES ('Miroslav Hulewicz',    'mira.hulewicz@centrum.cz');
 INSERT INTO users (username, email) VALUES ('Oldřich Janda',        'oldrich.janda@ojc.cz');
 INSERT INTO users (username, email) VALUES ('Pavel Havlát',         'pavel.havlat@seznam.cz');
+INSERT INTO users (username, email) VALUES ('Pavel Prudký',         'pavel.prudky@gmail.com');
 INSERT INTO users (username, email) VALUES ('Petr Starý',           '782732@gmail.com');
 INSERT INTO users (username, email) VALUES ('Radomír Švihel',       'svihel@gmail.com');
 INSERT INTO users (username, email) VALUES ('Tereza Weinerová',     'terka.babolat@gmail.com');
