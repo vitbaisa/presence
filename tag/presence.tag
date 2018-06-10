@@ -63,7 +63,7 @@
                                         onblur={change_capacity}
                                         ref="ccapacity" value={event.capacity} />
                             </div>
-                            <div if={!user.admin}>{event.capacity}</div>
+                            <span if={!user.admin}>{event.capacity},</span>
                             kurty:
                             <div if={user.admin} style="display: inline;">
                                 <input type="number" min="1" max="6"
@@ -71,8 +71,8 @@
                                         onblur={change_courts}
                                         ref="ccourts" value={event.courts} />
                             </div>
-                            <div if={!user.admin}>{event.courts}</div>
-                            <span if={presence.length}>cena: ~{Math.ceil((event.courts * 200) / presence.length * 2)} Kč</span>
+                            <span if={!user.admin}>{event.courts}</span>
+                            <span if={presence.length}>, cena: ~{Math.ceil((event.courts * 200) / presence.length * 2)} Kč</span>
                         </div>
                     </div>
                 </div>
