@@ -11,6 +11,13 @@ import smtplib
 from email.mime.text import MIMEText
 from dateutil import tz
 
+def utc2local(t):
+    t1 = datetime.datetime.strptime(t, '%Y-%m-%d %H:%M:%S')
+    HERE = tz.tzlocal()
+    UTC = tz.gettz('UTC')
+    nt = t1.replace(tzinfo=UTC)
+    return nt.astimezone(HERE).strftime('%Y-%m-%d %H:%M')
+
 class Presence():
     "A lightweight event-presence manager"
 
@@ -22,7 +29,7 @@ class Presence():
 
     def sendmail(self, text="", addresses=[], subject=""):
         sender = 'noreply@sketchengine.co.uk'
-        msg = MIMEText(text)
+        msg = MIMEText(text, 'html')
         msg['Subject'] = subject
         msg['From'] = sender
         msg['To'] = ','.join(addresses)
@@ -105,7 +112,7 @@ class Presence():
                 'nickname': row[1],
                 'userid': row[2],
                 'name': row[3],
-                'datetime': row[4]
+                'datetime': utc2local(row[4])
             })
         # guests
         q = """SELECT * FROM presence
@@ -115,7 +122,7 @@ class Presence():
         for row in r.fetchall():
             o.append({
                 'name': row[3],
-                'datetime': row[4]
+                'datetime': utc2local(row[4])
             })
         return {'data': o}
 
@@ -176,10 +183,10 @@ class Presence():
                 d = dict([(x['id'], x['email']) for x in self.users()['data']])
                 for uid in users.split(','):
                     emails.append(d.get(int(uid), ''))
-            body = """%s, %s, %s\n\nPřihlaš se nejpozději 24 hodin předem:\n
-https://vitek.baisa.net/presence/index.cgi/register?eventid=%d&redirect=1\n
-Na tento email neodpovídejte.\n
-Tým Kometa Badec""" % (title, starts, location, lastrowid)
+            body = """%s, %s, %s<br /><br />
+<a href="https://vitek.baisa.net/presence/#ev%d" target="_blank">Přihlas se</a> nejpozději 24 hodin předem.<br /><br />
+Na tento email neodpovídejte.<br /><br />
+Tým Kometa Badminton""" % (title, starts, location, lastrowid)
             self.sendmail(body, emails, 'Nezapomeňte se přihlásit')
         return {'data': 'Event ID#%d created' % lastrowid}
 
@@ -300,7 +307,7 @@ if __name__ == '__main__':
         3: 'Čtvrtek, volná hra',
         6: 'Neděle, volná hra'
     }
-    volnahra_lide = "1,2,3,4,5,6,7,8,9,10,11,12,13,14,16,17,18,19,20,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,42,45"
+    volnahra_lide = "1,2,3,4,5,6,7,8,9,10,11,12,13,14,16,17,18,19,20,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,42,45,46"
     emailto = {
         0: volnahra_lide,
         3: volnahra_lide,
