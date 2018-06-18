@@ -31,7 +31,7 @@ class Presence():
         sender = 'noreply@sketchengine.co.uk'
         msg = MIMEText(text, 'html')
         msg['Subject'] = subject
-        msg['From'] = sender
+        msg['From'] = 'Kometa Zetor <' + sender + '>'
         msg['To'] = ','.join(addresses)
         server = smtplib.SMTP('localhost', timeout=10)
         server.sendmail(sender, addresses, msg.as_string())
