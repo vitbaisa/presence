@@ -212,6 +212,8 @@ Tým Kometa Badminton""" % (title, starts, location, lastrowid)
     def register(self, eventid, redirect='0'):
         if self.check_capacity(eventid) >= 1.0:
             return {'error': 'Capacity full'}
+        if self.userid in [x['userid'] for x in self.presence(eventid)['data']]:
+            return {'error': 'Already registered'}
         q = """INSERT INTO presence (eventid, userid) VALUES (%d, %d);""" %\
                 (int(eventid), self.userid)
         r = self.cursor.execute(q)
