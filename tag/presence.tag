@@ -21,10 +21,10 @@
                     <div class="card-title">
                         <span class="evstarts">{event.starts}</span>
                         <virtual if={registered}>
-                            <a class="right btn red darken-2" onclick={unregister}>Nejdu!</a>
+                            <a class="right btn red darken-2" onclick={unregister}>Odhlásit</a>
                         </virtual>
                         <virtual if={!registered && presence.length < event.capacity && !event.locked}>
-                            <a class="right btn" onclick={register}>Jdu!</a>
+                            <a class="right btn" onclick={register}>Přihlásit</a>
                         </virtual>
                     </div>
                     <p if={!registered && presence.length >= event.capacity} class="red-text text-lighten-2">
@@ -45,11 +45,11 @@
                             </tr>
                             <tr if={user.admin}>
                                 <td>{presence.length + 1}</td>
-                                <td><input type="text" ref="guest" /></td>
+                                <td><input type="text" placeholder="Lee Chong Wei"
+                                        ref="guest" /></td>
                                 <td style="text-align: right;">
                                     <a class="btn btn-primary"
-                                            title="Přidat hosta"
-                                            onclick={add_guest}>Host</a>
+                                            onclick={add_guest}>Přidat</a>
                                 </td>
                             </tr>
                         </tbody>
@@ -100,10 +100,7 @@
                             <label for="new_comment">Tvůj komentář</label>
                         </div>
                         <div>
-                            <a class="btn" onclick={add_comment}>Poslat</a>
-                            &nbsp;&nbsp;
-                            <input type="checkbox" ref="anmail" id="anmail" />
-                            <label for="anmail">Poslat adminům</label>
+                            <a class="btn" onclick={add_comment}>Komentovat</a>
                         </div>
                     </form>
                 </div>
@@ -169,7 +166,7 @@
                     <div class="row">
                         <div class="col s12">
                             <a class="btn btn-primary" onclick={create_event}>
-                                Vytvořit událost</a>
+                                Vytvořit</a>
                         </div>
                     </div>
                 </div>

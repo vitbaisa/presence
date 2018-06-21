@@ -60,6 +60,7 @@ class Presence():
             })
         return {'data': o}
 
+    # TODO: use decorators
     def courts(self, eventid, courts):
         if self.is_admin:
             q = """UPDATE events SET courts = %d
@@ -309,7 +310,7 @@ if __name__ == '__main__':
         3: 'Čtvrtek, volná hra',
         6: 'Neděle, volná hra'
     }
-    volnahra_lide = "1,2,3,4,5,6,7,8,9,10,11,12,13,14,16,17,18,19,20,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,42,45,46"
+    volnahra_lide = "1,2,3,4,5,6,7,8,9,10,11,12,13,14,16,17,18,19,20,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,42,45,46,47,48"
     emailto = {
         0: volnahra_lide,
         3: volnahra_lide,
