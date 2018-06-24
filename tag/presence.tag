@@ -365,8 +365,7 @@
             }
             $.ajax({
                 url: cgi + '/add_comment?eventid=' + this.event.id +
-                        '&comment=' + comment +
-                        '&announce=' + (this.refs.anmail.checked ? '1' : '0'),
+                        '&comment=' + comment,
                 success: (d) => {
                     this.get_comments()
                 },
@@ -375,7 +374,6 @@
                 },
                 complete: () => {
                     this.refs.new_comment.value = ""
-                    this.refs.anmail.checked = false
                     this.update()
                 }
             })
