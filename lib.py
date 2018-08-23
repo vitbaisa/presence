@@ -60,6 +60,22 @@ class Presence():
             })
         return {'data': o}
 
+    def stats(self):
+        q = """SELECT userid, count(*) as sum
+                FROM presence
+                WHERE userid > -1
+                GROUP BY userid
+                ORDER by sum DESC"""
+        r = self.cursor.execute(q)
+        o = []
+        for row in r.fetchall():
+            u = self.get_user(userid=row[0])
+            o.append({
+                'name': u['nickname'] or u['username'],
+                'attended': row[1]
+            })
+        return {'data': o}
+
     # TODO: use decorators
     def courts(self, eventid, courts):
         if self.is_admin:
@@ -311,7 +327,7 @@ if __name__ == '__main__':
         3: 'Čtvrtek, volná hra',
         6: 'Neděle, volná hra'
     }
-    volnahra_lide = "1,2,3,4,5,6,7,8,9,10,11,12,13,14,16,17,18,19,20,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,42,41,44,45,46,47,48,49,50,51"
+    volnahra_lide = "1,2,3,4,5,6,7,8,9,10,11,12,13,14,16,17,18,19,20,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,42,41,44,45,46,47,48,49,50,51,52"
     emailto = {
         0: volnahra_lide,
         3: volnahra_lide,
