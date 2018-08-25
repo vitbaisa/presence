@@ -320,35 +320,62 @@ Tým Kometa Badminton""" % (title, starts, location, lastrowid)
 if __name__ == '__main__':
     next_week = datetime.datetime.now() + datetime.timedelta(days=7)
     day = datetime.datetime.today().weekday()
-    if day not in [0, 3, 6]:
+    events = {
+        0: [{
+                'title': 'Pondělí, trénink junioři',
+                'location': 'Zetor',
+                'starts': next_week.strftime('%Y-%m-%d 17:30:00'),
+                'duration': 1.5,
+                'capacity': 30,
+                'courts': 6,
+                'emailto': ''
+            },
+            {
+                'title': 'Pondělí, trénink',
+                'location': 'Zetor',
+                'starts': next_week.strftime('%Y-%m-%d 19:00:00'),
+                'duration': 2,
+                'capacity': 24,
+                'courts': 6,
+                'emailto': "1,2,3,4,5,6,7,8,9,10,11,12,13,14,16,17,18,19,20,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,42,41,44,45,46,47,48,49,50,51,52,53"
+            }],
+        2: [{
+                'title': 'Středa, trénink junioři',
+                'location': 'Zetor',
+                'starts': next_week.strftime('%Y-%m-%d 17:30:00'),
+                'duration': 1.5,
+                'capacity': 30,
+                'courts': 6,
+                'emailto': ''
+            }],
+        3: [{
+                'title': 'Čtvrtek, volná hra',
+                'location': 'Zetor',
+                'starts': next_week.strftime('%Y-%m-%d 19:00:00'),
+                'duration': 2,
+                'capacity': 16,
+                'courts': 4,
+                'emailto': "1,2,3,4,5,6,7,8,9,10,11,12,13,14,16,17,18,19,20,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,42,41,44,45,46,47,48,49,50,51,52,53"
+            }],
+        6: [{
+                'title': 'Neděle, volná hra',
+                'location': 'Zetor',
+                'starts': next_week.strftime('%Y-%m-%d 19:00:00'),
+                'duration': 2,
+                'capacity': 16,
+                'courts': 4,
+                'emailto': "1,2,3,4,5,6,7,8,9,10,11,12,13,14,16,17,18,19,20,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,42,41,44,45,46,47,48,49,50,51,52,53"
+            }]
+    }
+    if day not in events.keys():
         exit(0)
-    titles = {
-        0: 'Pondělí, volná hra',
-        3: 'Čtvrtek, volná hra',
-        6: 'Neděle, volná hra'
-    }
-    volnahra_lide = "1,2,3,4,5,6,7,8,9,10,11,12,13,14,16,17,18,19,20,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,42,41,44,45,46,47,48,49,50,51,52"
-    emailto = {
-        0: volnahra_lide,
-        3: volnahra_lide,
-        6: volnahra_lide
-    }
-    capacity = {0: 12, 3: 12, 6: 8}
-    courts = {0: 3, 3: 3, 6: 2}
-    event = {
-        'title': titles[day],
-        'location': 'Zetor Líšeň',
-        'starts': next_week.strftime('%Y-%m-%d 19:00:00'),
-        'duration': 2,
-        'capacity': capacity[day],
-        'courts': courts[day]
-    }
     try:
         p = Presence(sys.argv[1])
         p.is_admin = True
-        p.create_event(title=event['title'], starts=event['starts'],
-            capacity=event['capacity'], location="Zetor",
-            courts=event['courts'], announce=1, users=emailto[day])
-        print "Event created", event
-    except:
-        print "Failed to create event", event
+        for e in events[day]:
+            p.create_event(title=e['title'], starts=e['starts'],
+                capacity=e['capacity'], location=e['location'],
+                courts=e['courts'], announce=1, users=e['emailto'])
+            print "Event created", e
+    except Exception, e:
+        print "Failed to create event", str(e)
