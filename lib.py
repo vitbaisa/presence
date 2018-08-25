@@ -32,9 +32,10 @@ class Presence():
         msg = MIMEText(text, 'html')
         msg['Subject'] = subject
         msg['From'] = 'Kometa Zetor <' + sender + '>'
-        msg['To'] = ','.join(addresses)
         server = smtplib.SMTP('localhost', timeout=10)
-        server.sendmail(sender, addresses, msg.as_string())
+        for a in addresses:
+            msg['To'] = a
+            server.sendmail(sender, [a], msg.as_string())
         server.quit()
 
     def events(self):
