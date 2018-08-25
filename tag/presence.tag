@@ -150,16 +150,16 @@
                     </div>
                     <div class="row">
                         <div class="col s12">
-                            <ul>
-                                <li>
+                            <div class="row">
+                                <div class="col s6 l3">
                                     <input type="checkbox" checked id="uid_all" name="suser" onchange={check_all} />
                                     <label for="uid_all" class="active">Všichni</label>
-                                </li>
-                                <li each={u in users}>
+                                </div>
+                                <div class="col s6 l3" each={u in users}>
                                     <input type="checkbox" name="suser"
                                             id={"uid_" + u.id} data-id={u.id} />
                                     <label for={"uid_" + u.id}>{u.nickname || u.username}</label>
-                                </li>
+                                </div>
                             </ul>
                         </div>
                     </div>
@@ -173,11 +173,6 @@
             </div>
         </div>
     </div>
-    <footer>
-        <p>Ňáká připomínka?
-            <a href="mailto:vit.baisa@gmail.com">Dejte vědět</a>.
-        </p>
-    </footer>
 
     <style>
         @media only screen and (max-width: 500px) {

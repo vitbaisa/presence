@@ -100,7 +100,7 @@ class Presence():
             return {'error': 'You are not admin'}
 
     def users(self):
-        q = "SELECT id, username, nickname, email FROM users;"
+        q = "SELECT id, username, nickname, email FROM users ORDER BY nickname, username;"
         r = self.cursor.execute(q)
         o = []
         for row in r.fetchall():
@@ -328,7 +328,7 @@ if __name__ == '__main__':
                 'starts': next_week.strftime('%Y-%m-%d 17:30:00'),
                 'duration': 1.5,
                 'capacity': 30,
-                'courts': 6,
+                'courts': 4,
                 'emailto': ''
             },
             {
@@ -343,10 +343,10 @@ if __name__ == '__main__':
         2: [{
                 'title': 'Středa, trénink junioři',
                 'location': 'Zetor',
-                'starts': next_week.strftime('%Y-%m-%d 17:30:00'),
-                'duration': 1.5,
+                'starts': next_week.strftime('%Y-%m-%d 18:00:00'),
+                'duration': 2,
                 'capacity': 30,
-                'courts': 6,
+                'courts': 4,
                 'emailto': ''
             }],
         3: [{
