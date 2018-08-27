@@ -32,11 +32,23 @@ class Presence():
         msg = MIMEText(text, 'html')
         msg['Subject'] = subject
         msg['From'] = 'Kometa Zetor <' + sender + '>'
+        msg['To'] = 'kometabadec@seznam.cz'
         server = smtplib.SMTP('localhost', timeout=10)
-        for a in addresses:
-            msg['To'] = a
-            server.sendmail(sender, [a], msg.as_string())
+        server.sendmail(sender, addresses, msg.as_string())
         server.quit()
+
+    def _parse_restriction(self, s):
+        if not s.strip():
+            return []
+        l = []
+        items = s.split(',')
+        for i in items:
+            if '-' in i:
+                a, b = i.split('-')
+                l.extend(range(int(a), int(b)+1))
+            else:
+                l.append(int(i))
+        return l
 
     def events(self):
         q = """SELECT * FROM events
@@ -46,8 +58,8 @@ class Presence():
         r = self.cursor.execute(q)
         o = []
         for row in r.fetchall():
-            restr = row[7]
-            if restr and str(self.userid) not in restr.split(','):
+            restr = self._parse_restriction(row[7])
+            if restr and self.userid not in restr:
                 continue
             o.append({
                 'id': row[0],
@@ -190,20 +202,25 @@ class Presence():
         q = """INSERT INTO events
                (title, starts, duration, location, capacity, courts, restriction)
                VALUES ("%s", "%s", %d, "%s", %d, %d, "%s");""" %\
-               (title, starts, int(duration), location, int(capacity), int(courts), users)
+               (title, starts, int(duration), location, int(capacity),
+                int(courts), users)
         self.cursor.execute(q)
         self.conn.commit()
         lastrowid = self.cursor.execute("SELECT last_insert_rowid();").fetchone()[0]
         if int(announce):
             emails = []
             if not users:
-                emails = [x['email'] for x in self.users()['data'] if not x['email'].startswith('_')]
+                emails = [x['email'] for x in self.users()['data']\
+                        if not x['email'].startswith('_')]
             else:
-                d = dict([(x['id'], x['email']) for x in self.users()['data'] if not x['email'].startswith('_')])
-                for uid in users.split(','):
-                    emails.append(d.get(int(uid), ''))
+                d = dict([(x['id'], x['email']) for x in self.users()['data']\
+                        if not x['email'].startswith('_')])
+                for uid in self._parse_restriction(users):
+                    if d.get(uid, ''):
+                        emails.append(d[uid])
             body = """%s, %s, %s<br /><br />
-<a href="https://vitek.baisa.net/presence/#ev%d" target="_blank">Přihlas se</a> nejpozději 24 hodin předem.<br /><br />
+<a href="https://vitek.baisa.net/presence/#ev%d" target="_blank">Přihlaste se</a>
+nejpozději 24 hodin předem.<br /><br />
 Na tento email neodpovídejte.<br /><br />
 Tým Kometa Badminton""" % (title, starts, location, lastrowid)
             self.sendmail(body, emails, 'Nezapomeňte se přihlásit')
@@ -231,7 +248,8 @@ Tým Kometa Badminton""" % (title, starts, location, lastrowid)
     def register(self, eventid, redirect='0'):
         if self.check_capacity(eventid) >= 1.0:
             return {'error': 'Capacity full'}
-        if self.userid in [x['userid'] for x in self.presence(eventid)['data'] if 'userid' in x]:
+        if self.userid in [x['userid'] for x in self.presence(eventid)['data']\
+                if 'userid' in x]:
             return {'error': 'Already registered'}
         q = """INSERT INTO presence (eventid, userid) VALUES (%d, %d);""" %\
                 (int(eventid), self.userid)
@@ -299,7 +317,8 @@ Tým Kometa Badminton""" % (title, starts, location, lastrowid)
             response['user'] = self.user
             if 'redirect' in parameters and 'eventid' in parameters:
                 sys.stdout.write('Content-Type: text/html; charset=utf-8\n\n')
-                sys.stdout.write(open('redirect.html').read() % str(parameters['eventid']))
+                sys.stdout.write(open('redirect.html').read() %\
+                        str(parameters['eventid']))
             else:
                 sys.stdout.write('Content-Type: application/json; charset=utf-8\n\n')
                 sys.stdout.write(json.dumps(response) + '\n')
@@ -322,41 +341,46 @@ if __name__ == '__main__':
     next_week = datetime.datetime.now() + datetime.timedelta(days=7)
     day = datetime.datetime.today().weekday()
     events = {
-        0: [{
-                'title': 'Pondělí, trénink junioři',
+        0: [
+            {
+                """
+                'title': 'JUNIOŘI pondělí',
                 'location': 'Zetor',
                 'starts': next_week.strftime('%Y-%m-%d 17:30:00'),
                 'duration': 1.5,
                 'capacity': 30,
                 'courts': 4,
-                'emailto': ''
+                'emailto': '4,5,24,26,30,54-60,62-77'
             },
-            {
+            {"""
                 'title': 'Pondělí, trénink',
                 'location': 'Zetor',
                 'starts': next_week.strftime('%Y-%m-%d 19:00:00'),
                 'duration': 2,
                 'capacity': 24,
                 'courts': 6,
-                'emailto': "1,2,3,4,5,6,7,8,9,10,11,12,13,14,16,17,18,19,20,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,42,41,44,45,46,47,48,49,50,51,52,53"
+                'emailto': "1-14,16-20,22-42,44-53"
             }],
-        2: [{
-                'title': 'Středa, trénink junioři',
+        2: [
+            """{
+                'title': 'JUNIOŘI, středa',
                 'location': 'Zetor',
                 'starts': next_week.strftime('%Y-%m-%d 18:00:00'),
                 'duration': 2,
                 'capacity': 30,
                 'courts': 4,
-                'emailto': ''
-            }],
+                'emailto': '4,5,24,26,30,54,55,72,57-61,64-66,68-71'
+            }
+            """
+            ],
         3: [{
                 'title': 'Čtvrtek, volná hra',
                 'location': 'Zetor',
                 'starts': next_week.strftime('%Y-%m-%d 19:00:00'),
                 'duration': 2,
-                'capacity': 16,
-                'courts': 4,
-                'emailto': "1,2,3,4,5,6,7,8,9,10,11,12,13,14,16,17,18,19,20,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,42,41,44,45,46,47,48,49,50,51,52,53"
+                'capacity': 20,
+                'courts': 5,
+                'emailto': "1-14,16-20,22-42,44-53"
             }],
         6: [{
                 'title': 'Neděle, volná hra',
@@ -365,7 +389,7 @@ if __name__ == '__main__':
                 'duration': 2,
                 'capacity': 16,
                 'courts': 4,
-                'emailto': "1,2,3,4,5,6,7,8,9,10,11,12,13,14,16,17,18,19,20,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,42,41,44,45,46,47,48,49,50,51,52,53"
+                'emailto': "1-14,16-20,22-42,44-53"
             }]
     }
     if day not in events.keys():
