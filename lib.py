@@ -343,8 +343,7 @@ if __name__ == '__main__':
     events = {
         0: [
             {
-                """
-                'title': 'JUNIOŘI pondělí',
+                'title': 'JUNIOŘI, pondělí',
                 'location': 'Zetor',
                 'starts': next_week.strftime('%Y-%m-%d 17:30:00'),
                 'duration': 1.5,
@@ -352,7 +351,7 @@ if __name__ == '__main__':
                 'courts': 4,
                 'emailto': '4,5,24,26,30,54-60,62-74,77'
             },
-            {"""
+            {
                 'title': 'Pondělí, trénink',
                 'location': 'Zetor',
                 'starts': next_week.strftime('%Y-%m-%d 19:00:00'),
@@ -361,8 +360,7 @@ if __name__ == '__main__':
                 'courts': 6,
                 'emailto': "1-14,16-20,22-42,44-53,75,76"
             }],
-        2: [
-            """{
+        2: [{
                 'title': 'JUNIOŘI, středa',
                 'location': 'Zetor',
                 'starts': next_week.strftime('%Y-%m-%d 18:00:00'),
@@ -370,9 +368,7 @@ if __name__ == '__main__':
                 'capacity': 30,
                 'courts': 4,
                 'emailto': '4,5,24,26,30,54,55,72,57-61,64-66,68-71,75-77,45,37,39'
-            }
-            """
-            ],
+            }],
         3: [{
                 'title': 'Čtvrtek, volná hra',
                 'location': 'Zetor',
