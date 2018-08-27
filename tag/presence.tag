@@ -72,7 +72,8 @@
                                         ref="ccourts" value={event.courts} />
                             </div>
                             <span if={!user.admin}>{event.courts}</span>
-                            <span if={presence.length}>, cena: ~{Math.ceil((event.courts * 200) / presence.length * 2)} Kč</span>
+                            <span if={presence.length && event.title.indexOf('JUNIO') < 0}>,
+                                cena: ~{Math.ceil((event.courts * 200) / presence.length * 2)} Kč</span>
                         </div>
                     </div>
                 </div>

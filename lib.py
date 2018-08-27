@@ -69,7 +69,7 @@ class Presence():
                 'location': row[4],
                 'capacity': row[5],
                 'courts': row[6],
-                'locked': self.soon(row[2])
+                'locked': 'JUN' not in row[1] and self.soon(row[2])
             })
         return {'data': o}
 
@@ -350,7 +350,7 @@ if __name__ == '__main__':
                 'duration': 1.5,
                 'capacity': 30,
                 'courts': 4,
-                'emailto': '4,5,24,26,30,54-60,62-77'
+                'emailto': '4,5,24,26,30,54-60,62-74,77'
             },
             {"""
                 'title': 'Pondělí, trénink',
@@ -359,7 +359,7 @@ if __name__ == '__main__':
                 'duration': 2,
                 'capacity': 24,
                 'courts': 6,
-                'emailto': "1-14,16-20,22-42,44-53"
+                'emailto': "1-14,16-20,22-42,44-53,75,76"
             }],
         2: [
             """{
@@ -369,7 +369,7 @@ if __name__ == '__main__':
                 'duration': 2,
                 'capacity': 30,
                 'courts': 4,
-                'emailto': '4,5,24,26,30,54,55,72,57-61,64-66,68-71'
+                'emailto': '4,5,24,26,30,54,55,72,57-61,64-66,68-71,75,76,45,37,39'
             }
             """
             ],
@@ -380,7 +380,7 @@ if __name__ == '__main__':
                 'duration': 2,
                 'capacity': 20,
                 'courts': 5,
-                'emailto': "1-14,16-20,22-42,44-53"
+                'emailto': "1-14,16-20,22-42,44-53,75,76"
             }],
         6: [{
                 'title': 'Neděle, volná hra',
@@ -389,7 +389,7 @@ if __name__ == '__main__':
                 'duration': 2,
                 'capacity': 16,
                 'courts': 4,
-                'emailto': "1-14,16-20,22-42,44-53"
+                'emailto': "1-14,16-20,22-42,44-53,75,76"
             }]
     }
     if day not in events.keys():
