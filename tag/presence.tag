@@ -5,7 +5,7 @@
                 <li class="tab col {s3: events.length >= 4, s4: events.length < 4}"
                         each={ev, i in events} id="ev{ev.id}">
                     <a onclick={change_event} title="{ev.starts}/{ev.location}"
-                            class={active: (location.hash == '#ev' + ev.id) || !location.hash.length}
+                            class={active: (location.hash == '#ev' + ev.id) || !location.hash.length, junior: ev.junior}
                             href="#">{ev.title}</a>
                 </li>
                 <li class="tab col s12" if={!events.length}>
@@ -37,9 +37,10 @@
                         <tbody>
                             <tr each={item, i in presence}>
                                 <td>{i+1}</td>
-                                <td class={bold: item.userid == user.id}>
+                                <td class={bold: item.userid == user.id, coach: item.coach}>
                                     {item.name || item.nickname || item.username}
                                     <span if={item.name}>(host)</span>
+                                    <span if={event.junior && item.coach}>(trenér)</span>
                                 </td>
                                 <td class="text-right nowrap">{item.datetime}</td>
                             </tr>
@@ -72,7 +73,7 @@
                                         ref="ccourts" value={event.courts} />
                             </div>
                             <span if={!user.admin}>{event.courts}</span>
-                            <span if={presence.length && event.title.indexOf('JUNIO') < 0}>,
+                            <span if={presence.length && !event.junior}>,
                                 cena: ~{Math.ceil((event.courts * 200) / presence.length * 2)} Kč</span>
                         </div>
                     </div>
@@ -217,6 +218,16 @@
         .bold {
             font-weight: bold;
         }
+        .tab a.junior {
+            color: #4095b7;
+        }
+        .tab a.active.junior {
+            background-color: #e0f6ff;
+            color: #777;
+        }
+        .coach {
+            color: #D32F2F;
+        }
     </style>
 
     <script>
@@ -323,7 +334,24 @@
             $.ajax({
                 url: cgi + '/presence?eventid=' + this.event.id,
                 success: (d) => {
-                    this.presence = d.data
+                    this.presence = []
+                    if (this.event.junior) {
+                        let coaches = []
+                        for (let i=0; i<d.data.length; i++) {
+                            if (d.data[i].coach) {
+                                coaches.push(d.data[i])
+                            }
+                            else {
+                                this.presence.push(d.data[i])
+                            }
+                        }
+                        for (let i=0; i<coaches.length; i++) {
+                            this.presence.push(coaches[i])
+                        }
+                    }
+                    else {
+                        this.presence = d.data
+                    }
                     this.registered = false
                     for (let i=0; i<this.presence.length; i++) {
                         if (this.presence[i].userid == this.user.id) {

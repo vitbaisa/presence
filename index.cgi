@@ -5,6 +5,7 @@ from lib import Presence
 
 class App(Presence):
     admins = ['Vít Baisa', 'Zdeněk Mejzlík', 'Hana Pospíšilová', 'Martin Svoboda']
+    coach_ids = [4, 5, 24, 26, 30]
     admin_mails = ['vit.baisa@gmail.com']
     db = 'presence.db'
 

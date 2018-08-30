@@ -69,6 +69,7 @@ class Presence():
                 'location': row[4],
                 'capacity': row[5],
                 'courts': row[6],
+                'junior': 'JUN' in row[1],
                 'locked': 'JUN' not in row[1] and self.soon(row[2])
             })
         return {'data': o}
@@ -142,7 +143,8 @@ class Presence():
                 'nickname': row[1],
                 'userid': row[2],
                 'name': row[3],
-                'datetime': utc2local(row[4])
+                'datetime': utc2local(row[4]),
+                'coach': row[2] in getattr(self, 'coach_ids', [])
             })
         # guests
         q = """SELECT * FROM presence
@@ -343,7 +345,7 @@ if __name__ == '__main__':
     events = {
         0: [
             {
-                'title': 'JUNIOŘI, pondělí',
+                'title': 'Pondělí, JUNIOŘI',
                 'location': 'Zetor',
                 'starts': next_week.strftime('%Y-%m-%d 17:30:00'),
                 'duration': 1.5,
@@ -358,10 +360,10 @@ if __name__ == '__main__':
                 'duration': 2,
                 'capacity': 24,
                 'courts': 6,
-                'emailto': "1-14,16-20,22-42,44-53,75,76"
+                'emailto': "1-5,8-12,14,16-23,25,27,30,34,35,37,39,40,42,45,49,52,75,76"
             }],
         2: [{
-                'title': 'JUNIOŘI, středa',
+                'title': 'Středa, JUNIOŘI',
                 'location': 'Zetor',
                 'starts': next_week.strftime('%Y-%m-%d 18:00:00'),
                 'duration': 2,
