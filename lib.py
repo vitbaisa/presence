@@ -112,17 +112,18 @@ class Presence():
         else:
             return {'error': 'You are not admin'}
 
-    def users(self):
+    def users(self, full=0):
         q = "SELECT id, username, nickname, email FROM users ORDER BY nickname, username;"
         r = self.cursor.execute(q)
         o = []
         for row in r.fetchall():
-            o.append({
+            i = {
                 'id': int(row[0]),
                 'username': row[1],
-                'nickname': row[2],
-                'email': row[3]
-            })
+                'nickname': row[2]
+            }
+            if full: i['email'] = row[3]
+            o.append(i)
         return {'data': o}
 
     def presence(self, eventid):
@@ -212,10 +213,10 @@ class Presence():
         if int(announce):
             emails = []
             if not users:
-                emails = [x['email'] for x in self.users()['data']\
+                emails = [x['email'] for x in self.users(1)['data']\
                         if not x['email'].startswith('_')]
             else:
-                d = dict([(x['id'], x['email']) for x in self.users()['data']\
+                d = dict([(x['id'], x['email']) for x in self.users(1)['data']\
                         if not x['email'].startswith('_')])
                 for uid in self._parse_restriction(users):
                     if d.get(uid, ''):
@@ -369,7 +370,7 @@ if __name__ == '__main__':
                 'duration': 2,
                 'capacity': 30,
                 'courts': 4,
-                'emailto': '4,5,24,26,30,54,55,72,57-61,64-66,68-71,75-77,45,37,39'
+                'emailto': '4,5,24,26,30,54,55,72,57-61,64-66,68-71,74-77,45,37,39'
             }],
         3: [{
                 'title': 'Čtvrtek, volná hra',

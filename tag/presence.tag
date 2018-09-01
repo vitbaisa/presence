@@ -37,7 +37,7 @@
                         <tbody>
                             <tr each={item, i in presence}>
                                 <td>{i+1}</td>
-                                <td class={bold: item.userid == user.id, coach: item.coach}>
+                                <td class={bold: item.userid == user.id, coach: item.coach && event.junior}>
                                     {item.name || item.nickname || item.username}
                                     <span if={item.name}>(host)</span>
                                     <span if={event.junior && item.coach}>(trenér)</span>
