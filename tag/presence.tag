@@ -41,6 +41,9 @@
                                     {item.name || item.nickname || item.username}
                                     <span if={item.name}>(host)</span>
                                     <span if={event.junior && item.coach}>(trenér)</span>
+                                    <a if={user.admin} onclick={rm_user}
+                                            style="cursor: pointer;"
+                                            class="red-text">✕</a>
                                 </td>
                                 <td class="text-right nowrap">{item.datetime}</td>
                             </tr>
@@ -260,7 +263,18 @@
                     console.log(d);
                 }
             })
+        }
 
+        rm_user(event) {
+            $.ajax({
+                url: cgi + '/remove_user?id=' + event.item.item.id,
+                success: (d) => {
+                    this.get_presence()
+                },
+                error: (d) => {
+                    console.log(d);
+                }
+            })
         }
 
         change_capacity(ev) {

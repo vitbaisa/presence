@@ -131,7 +131,8 @@ class Presence():
                       users.nickname,
                       presence.userid,
                       presence.name,
-                      presence.datetime
+                      presence.datetime,
+                      presence.id
                 FROM presence, users
                 WHERE eventid = %d
                 AND presence.userid = users.id
@@ -145,7 +146,8 @@ class Presence():
                 'userid': row[2],
                 'name': row[3],
                 'datetime': utc2local(row[4]),
-                'coach': row[2] in getattr(self, 'coach_ids', [])
+                'coach': row[2] in getattr(self, 'coach_ids', []),
+                'id': row[5]
             })
         # guests
         q = """SELECT * FROM presence
@@ -156,9 +158,16 @@ class Presence():
         for row in r.fetchall():
             o.append({
                 'name': row[3],
-                'datetime': utc2local(row[4])
+                'datetime': utc2local(row[4]),
+                'id': row[0]
             })
         return {'data': o}
+
+    def remove_user(self, id):
+        q = """DELETE FROM presence WHERE id = %d""" % int(id)
+        self.cursor.execute(q)
+        self.conn.commit()
+        return {'data': 'OK'}
 
     def add_comment(self, eventid, comment, announce="0"):
         q = """INSERT INTO comments
