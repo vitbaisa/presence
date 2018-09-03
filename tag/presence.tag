@@ -74,7 +74,7 @@
                             </div>
                             <span if={!user.admin}>{event.courts}</span>
                             <span if={presence.length && !event.junior}>,
-                                cena: ~{Math.ceil((event.courts * 200) / presence.length * 2)} Kč</span>
+                                cena: ~{Math.ceil((event.courts * 230) / presence.length * 2)} Kč</span>
                         </div>
                     </div>
                 </div>

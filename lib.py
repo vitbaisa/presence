@@ -54,7 +54,7 @@ class Presence():
         q = """SELECT * FROM events
                 WHERE date(starts) >= date('now', '+2 hours')
                 AND date(starts) < date('now', '+8 days')
-                ORDER BY starts ASC LIMIT 4"""
+                ORDER BY starts ASC"""
         r = self.cursor.execute(q)
         o = []
         for row in r.fetchall():
