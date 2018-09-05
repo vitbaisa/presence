@@ -189,7 +189,8 @@ class Presence():
                     comments.userid,
                     comments.datetime,
                     comments.text,
-                    users.username
+                    users.username,
+                    users.nickname
                 FROM comments, users
                 WHERE eventid = %d
                 AND users.id = comments.userid
@@ -203,7 +204,7 @@ class Presence():
                 'userid': row[2],
                 'datetime': row[3],
                 'text': row[4],
-                'name': row[5]
+                'name': row[6] or row[5]
             })
         return {'data': o}
 
