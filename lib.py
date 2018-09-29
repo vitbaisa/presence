@@ -31,7 +31,7 @@ class Presence():
         sender = 'noreply@sketchengine.co.uk'
         msg = MIMEText(text, 'html')
         msg['Subject'] = subject
-        msg['From'] = 'Kometa Zetor <' + sender + '>'
+        msg['From'] = 'Kometa <' + sender + '>'
         msg['To'] = 'kometabadec@seznam.cz'
         server = smtplib.SMTP('localhost', timeout=10)
         server.sendmail(sender, addresses, msg.as_string())
@@ -362,7 +362,7 @@ if __name__ == '__main__':
                 'duration': 1.5,
                 'capacity': 30,
                 'courts': 4,
-                'emailto': '4,5,24,26,30,54-60,62-74,77'
+                'emailto': '4,5,26,30,54-60,62-74,77'
             },
             {
                 'title': 'Pondělí, trénink',
@@ -371,7 +371,7 @@ if __name__ == '__main__':
                 'duration': 2,
                 'capacity': 24,
                 'courts': 6,
-                'emailto': "1-5,8-12,14,16-23,25,27,30,34,35,37,39,40,42,45,49,52,75,76"
+                'emailto': "1-5,8-12,14,16-25,27,30,34,35,37,39,40,42,45,49,52,75,76,78"
             }],
         2: [{
                 'title': 'Středa, JUNIOŘI',
@@ -380,7 +380,16 @@ if __name__ == '__main__':
                 'duration': 2,
                 'capacity': 30,
                 'courts': 4,
-                'emailto': '4,5,24,26,30,54,55,72,57-61,64-66,68-71,74-77,45,37,39'
+                'emailto': '4,5,24,26,30,54,55,72,56-61,64-66,68-71,74-77,45,37,39'
+            },
+            {
+                'title': 'Středa s Vojtou',
+                'location': 'Sprint',
+                'starts': next_week.strftime('%Y-%m-%d 07:30:00'),
+                'duration': 2,
+                'capacity': 8,
+                'courts': 2,
+                'emailto': '1,2,3,4,5,9,14,21,36,43,45'
             }],
         3: [{
                 'title': 'Čtvrtek, volná hra',
@@ -389,7 +398,7 @@ if __name__ == '__main__':
                 'duration': 2,
                 'capacity': 20,
                 'courts': 5,
-                'emailto': "1-14,16-20,22-42,44-53,75,76"
+                'emailto': "1-14,16-42,44-53,75,76,78,79"
             }],
         6: [{
                 'title': 'Neděle, volná hra',
@@ -398,7 +407,7 @@ if __name__ == '__main__':
                 'duration': 2,
                 'capacity': 16,
                 'courts': 4,
-                'emailto': "1-14,16-20,22-42,44-53,75-77"
+                'emailto': "1-14,16-42,44-53,75-79"
             }]
     }
     if day not in events.keys():
