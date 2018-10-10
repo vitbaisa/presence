@@ -52,8 +52,8 @@ class Presence():
 
     def events(self):
         q = """SELECT * FROM events
-                WHERE date(starts) >= date('now', '+2 hours')
-                AND date(starts) < date('now', '+8 days')
+                WHERE datetime(starts) >= datetime('now', '+2 hours')
+                AND datetime(starts) < datetime('now', '+8 days')
                 ORDER BY starts ASC"""
         r = self.cursor.execute(q)
         o = []
@@ -380,7 +380,7 @@ if __name__ == '__main__':
                 'duration': 2,
                 'capacity': 30,
                 'courts': 4,
-                'emailto': '4,5,24,26,30,54,55,72,56-61,64-66,68-71,74-77,45,37,39'
+                'emailto': '4,5,24,26,30,37,39,45,54-61,64-66,68-72,74-77'
             },
             {
                 'title': 'Středa s Vojtou',
