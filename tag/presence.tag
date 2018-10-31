@@ -403,7 +403,7 @@
             }
             $.ajax({
                 url: cgi + '/add_comment?eventid=' + this.event.id +
-                        '&comment=' + comment,
+                        '&comment=' + encodeURIComponent(comment),
                 success: (d) => {
                     this.get_comments()
                 },
