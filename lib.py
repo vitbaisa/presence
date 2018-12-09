@@ -52,7 +52,7 @@ class Presence():
 
     def events(self):
         q = """SELECT * FROM events
-                WHERE datetime(starts) >= datetime('now', '+4 hours')
+                WHERE datetime(starts) >= datetime('now', '-4 hours')
                 AND datetime(starts) < datetime('now', '+8 days')
                 ORDER BY starts ASC"""
         r = self.cursor.execute(q)
@@ -419,6 +419,5 @@ if __name__ == '__main__':
             p.create_event(title=e['title'], starts=e['starts'],
                 capacity=e['capacity'], location=e['location'],
                 courts=e['courts'], announce=1, users=e['emailto'])
-            print "Event created", e
     except Exception, e:
         print "Failed to create event", str(e)
