@@ -208,6 +208,17 @@ class Presence():
             })
         return {'data': o}
 
+    def remove_event(self, eventid):
+        if not self.is_admin:
+            return {'error': 'Only admin can remove an event'}
+        q = """DELETE FROM events WHERE id = %s""" % eventid
+        self.cursor.execute(q)
+        self.conn.commit()
+        q = """DELETE FROM presence WHERE eventid = %s""" % eventid
+        self.cursor.execute(q)
+        self.conn.commit()
+        return {'message': 'Event removed'}
+
     def create_event(self, users="", title="", starts="", duration=2,
             location="Zetor", capacity=0, courts=0, announce=0):
         if not self.is_admin:

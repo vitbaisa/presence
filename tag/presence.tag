@@ -79,6 +79,13 @@
                             <span if={presence.length && !event.junior}>,
                                 cena: ~{Math.ceil((event.courts * 230) / presence.length * 2)} Kč</span>
                         </div>
+                        <div class="col s12 text-center center" if={user.admin}>
+                            <a if={user.admin} onclick={remove_event}
+                                    style="font-size: 50%;"
+                                    href="javascript:void(0);">
+                                Smazat
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -294,6 +301,19 @@
 
         check_all(ev) {
             $('input[id^="uid_"]').prop('checked', $(ev.target).is(':checked'))
+        }
+
+        remove_event() {
+            $.ajax({
+                url: cgi + '/remove_event?eventid=' + this.event.id,
+                success: (d) => {
+                    this.get_events()
+                },
+                error: (d) => {
+                    console.log('ERROR', d)
+                }
+            })
+
         }
 
         create_event() {
