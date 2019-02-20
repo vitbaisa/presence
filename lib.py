@@ -52,8 +52,8 @@ class Presence():
 
     def events(self):
         q = """SELECT * FROM events
-                WHERE datetime(starts) >= datetime('now', '-4 hours')
-                AND datetime(starts) < datetime('now', '+8 days')
+                WHERE datetime(starts) >= datetime('now', 'localtime', '-2 hours')
+                AND datetime(starts) < datetime('now', 'localtime', '+8 days')
                 ORDER BY starts ASC"""
         r = self.cursor.execute(q)
         o = []
@@ -362,6 +362,7 @@ Tým Kometa Badminton""" % (title, starts, location, lastrowid)
             return False
 
 if __name__ == '__main__':
+
     next_week = datetime.datetime.now() + datetime.timedelta(days=7)
     day = datetime.datetime.today().weekday()
     events = {
@@ -387,7 +388,7 @@ if __name__ == '__main__':
         2: [{
                 'title': 'Středa, JUNIOŘI',
                 'location': 'Zetor',
-                'starts': next_week.strftime('%Y-%m-%d 18:00:00'),
+                'starts': next_week.strftime('%Y-%m-%d 17:00:00'),
                 'duration': 2,
                 'capacity': 30,
                 'courts': 4,
@@ -421,14 +422,18 @@ if __name__ == '__main__':
                 'emailto': "1-14,16-42,44-51,53,75-79"
             }]
     }
-    if day not in events.keys():
-        exit(0)
-    try:
-        p = Presence(sys.argv[1])
-        p.is_admin = True
-        for e in events[day]:
-            p.create_event(title=e['title'], starts=e['starts'],
-                capacity=e['capacity'], location=e['location'],
-                courts=e['courts'], announce=1, users=e['emailto'])
-    except Exception, e:
-        print "Failed to create event", str(e)
+    if '--ucast' in sys.argv:
+        # selong.v@seznam.cz
+        pass
+    else:
+        if day not in events.keys():
+            exit(0)
+        try:
+            p = Presence(sys.argv[1])
+            p.is_admin = True
+            for e in events[day]:
+                p.create_event(title=e['title'], starts=e['starts'],
+                    capacity=e['capacity'], location=e['location'],
+                    courts=e['courts'], announce=1, users=e['emailto'])
+        except Exception, e:
+            print "Failed to create event", str(e)

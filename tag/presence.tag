@@ -19,7 +19,7 @@
             <div class="card">
                 <div class="card-content">
                     <div class="card-title">
-                        <span class="evstarts">{event.starts}</span>
+                        <span title={event.starts}>{event.title}</span>
                         <virtual if={registered}>
                             <a class="right btn red darken-2" onclick={unregister}>Odhlásit</a>
                         </virtual>
@@ -120,11 +120,16 @@
             </div>
         </div>
     </div>
+    <div class="row" if={user.admin && !showNewEvent}>
+        <div class="col s12">
+            <a class="btn btn-floating" href="javascript:void(0);" onclick={toggleNewEvent}>+</a>
+        </div>
+    </div>
     <div class="row">
         <div class="col s12">
-            <div class="card" if={user.admin}>
+            <div class="card" if={user.admin && showNewEvent}>
                 <div class="card-content">
-                    <div class="card-title">Přidat událost</div>
+                    <span class="card-title">Nová událost</span>
                     <div class="row">
                         <div class="col s12 m6 input-field">
                             <input type="text" ref="eventname" />
@@ -249,6 +254,12 @@
         this.registered = false
         this.user = {}
         this.users = []
+        this.showNewEvent = false
+
+        toggleNewEvent() {
+            this.showNewEvent = true
+            window.scrollTo(0, document.body.scrollHeight);
+        }
 
         change_event(ev) {
             this.event = ev.item.ev
