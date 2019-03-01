@@ -11,6 +11,8 @@ import smtplib
 from email.mime.text import MIMEText
 from dateutil import tz
 
+# TODO: decorator is_admin
+
 def utc2local(t):
     t1 = datetime.datetime.strptime(t, '%Y-%m-%d %H:%M:%S')
     HERE = tz.tzlocal()
@@ -90,23 +92,19 @@ class Presence():
             })
         return {'data': o}
 
-    # TODO: use decorators
     def courts(self, eventid, courts):
         if self.is_admin:
-            q = """UPDATE events SET courts = %d
-                    WHERE id = %d""" % (int(courts), int(eventid))
-            r = self.cursor.execute(q)
+            q = """UPDATE events SET courts = ? WHERE id = ?"""
+            r = self.cursor.execute(q, (int(courts), int(eventid)))
             self.conn.commit()
             return {'data': 'Event updated'}
         else:
             return {'error': 'You are not admin'}
 
-
     def capacity(self, eventid, capacity):
         if self.is_admin:
-            q = """UPDATE events SET capacity = %d
-                    WHERE id = %d""" % (int(capacity), int(eventid))
-            r = self.cursor.execute(q)
+            q = """UPDATE events SET capacity = ? WHERE id = ?"""
+            r = self.cursor.execute(q, (int(capacity), int(eventid)))
             self.conn.commit()
             return {'data': 'Event updated'}
         else:
@@ -134,10 +132,10 @@ class Presence():
                       presence.datetime,
                       presence.id
                 FROM presence, users
-                WHERE eventid = %d
+                WHERE eventid = ?
                 AND presence.userid = users.id
-                ORDER BY presence.datetime""" % int(eventid)
-        r = self.cursor.execute(q)
+                ORDER BY presence.datetime"""
+        r = self.cursor.execute(q, (int(eventid),))
         o = []
         for row in r.fetchall():
             o.append({
@@ -151,10 +149,10 @@ class Presence():
             })
         # guests
         q = """SELECT * FROM presence
-               WHERE eventid = %d
+               WHERE eventid = ?
                AND userid = -1
-               ORDER BY presence.datetime""" % int(eventid)
-        r = self.cursor.execute(q)
+               ORDER BY presence.datetime"""
+        r = self.cursor.execute(q, (int(eventid),))
         for row in r.fetchall():
             o.append({
                 'name': row[3],
@@ -164,21 +162,19 @@ class Presence():
         return {'data': o}
 
     def remove_user(self, id):
-        q = """DELETE FROM presence WHERE id = %d""" % int(id)
-        self.cursor.execute(q)
+        q = """DELETE FROM presence WHERE id = ?"""
+        self.cursor.execute(q, (int(id),))
         self.conn.commit()
         return {'data': 'OK'}
 
     def add_comment(self, eventid, comment, announce="0"):
-        q = """INSERT INTO comments
-                (eventid, userid, text)
-                VALUES (%d, %d, "%s")""" % (int(eventid), self.userid, comment)
+        q = """INSERT INTO comments (eventid, userid, text) VALUES (?, ?, ?);"""
         if int(announce):
             ev = self.get_event(int(eventid))
             subject = "%s komentoval(a) událost %s (%s)" %\
                     (self.user['username'].encode('utf-8'), ev['title'].encode('utf-8'), ev['starts'].encode('utf-8'))
             self.sendmail(comment, self.admin_mails, subject)
-        self.cursor.execute(q)
+        self.cursor.execute(q, (int(eventid), self.userid, comment))
         self.conn.commit()
         # TODO: send comment id
         return {'data': 'OK'}
@@ -192,10 +188,10 @@ class Presence():
                     users.username,
                     users.nickname
                 FROM comments, users
-                WHERE eventid = %d
+                WHERE eventid = ?
                 AND users.id = comments.userid
-                ORDER BY datetime DESC;""" % int(eventid)
-        r = self.cursor.execute(q)
+                ORDER BY datetime DESC;"""
+        r = self.cursor.execute(q, (int(eventid),))
         o = []
         for row in r.fetchall():
             o.append({
@@ -211,11 +207,11 @@ class Presence():
     def remove_event(self, eventid):
         if not self.is_admin:
             return {'error': 'Only admin can remove an event'}
-        q = """DELETE FROM events WHERE id = %s""" % eventid
-        self.cursor.execute(q)
+        q = """DELETE FROM events WHERE id = ?"""
+        self.cursor.execute(q, (int(eventid),))
         self.conn.commit()
-        q = """DELETE FROM presence WHERE eventid = %s""" % eventid
-        self.cursor.execute(q)
+        q = """DELETE FROM presence WHERE eventid = ?"""
+        self.cursor.execute(q, (int(eventid),))
         self.conn.commit()
         return {'message': 'Event removed'}
 
@@ -225,10 +221,9 @@ class Presence():
             return {'error': 'Only admin can create an event'}
         q = """INSERT INTO events
                (title, starts, duration, location, capacity, courts, restriction)
-               VALUES ("%s", "%s", %d, "%s", %d, %d, "%s");""" %\
-               (title, starts, int(duration), location, int(capacity),
-                int(courts), users)
-        self.cursor.execute(q)
+               VALUES (?, ?, ?, ?, ?, ?, ?);"""
+        self.cursor.execute(q, (title, starts, int(duration), location,
+                int(capacity), int(courts), users))
         self.conn.commit()
         lastrowid = self.cursor.execute("SELECT last_insert_rowid();").fetchone()[0]
         if int(announce):
@@ -263,8 +258,8 @@ Tým Kometa Badminton""" % (title, starts, location, lastrowid)
         return {'data': 'Guest registered'}
 
     def check_capacity(self, eventid):
-        q = """SELECT count(*) FROM presence WHERE eventid = %d""" % int(eventid)
-        r = self.cursor.execute(q)
+        q = """SELECT count(*) FROM presence WHERE eventid = ?"""
+        r = self.cursor.execute(q, (int(eventid),))
         players = int(r.fetchone()[0])
         e = self.get_event(int(eventid))
         return float(players) / e['capacity']
@@ -275,18 +270,16 @@ Tým Kometa Badminton""" % (title, starts, location, lastrowid)
         if self.userid in [x['userid'] for x in self.presence(eventid)['data']\
                 if 'userid' in x]:
             return {'error': 'Already registered'}
-        q = """INSERT INTO presence (eventid, userid) VALUES (%d, %d);""" %\
-                (int(eventid), self.userid)
-        r = self.cursor.execute(q)
-        # TODO: last_insert_rowid
+        q = """INSERT INTO presence (eventid, userid) VALUES (?, ?);"""
+        r = self.cursor.execute(q, (int(eventid), self.userid))
         self.conn.commit()
         return {'data': 'registered'}
 
     def unregister(self, eventid):
         q = """DELETE FROM presence
-                WHERE userid = %d
-                AND eventid = %d""" % (self.userid, int(eventid))
-        r = self.cursor.execute(q)
+                WHERE userid = ?
+                AND eventid = ?"""
+        r = self.cursor.execute(q, (self.userid, int(eventid)))
         self.conn.commit()
         return {'data': 'unregistered'}
 
@@ -294,8 +287,8 @@ Tým Kometa Badminton""" % (title, starts, location, lastrowid)
         return {'error': 'Unknown or missing method'}
 
     def get_event(self, eventid):
-        q = """SELECT * FROM events WHERE id = %d""" % eventid
-        r = self.cursor.execute(q).fetchone()
+        q = """SELECT * FROM events WHERE id = ?"""
+        r = self.cursor.execute(q, (int(eventid),)).fetchone()
         return {
             'id': r[0],
             'title': r[1],
@@ -308,10 +301,11 @@ Tým Kometa Badminton""" % (title, starts, location, lastrowid)
 
     def get_user(self, username='', userid=''):
         if username:
-            q = 'SELECT * FROM users WHERE username = "%s";' % username
+            q = 'SELECT * FROM users WHERE username = ?;'
+            r = self.cursor.execute(q, (username.decode('utf-8'),)).fetchone()
         else:
-            q = 'SELECT * FROM users WHERE id = %d;' % int(userid)
-        r = self.cursor.execute(q).fetchone()
+            q = 'SELECT * FROM users WHERE id = ?;'
+            r = self.cursor.execute(q, (int(userid),)).fetchone()
         if r:
             return {
                 'id': r[0],

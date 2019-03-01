@@ -98,8 +98,7 @@
                     </div>
                     <ul class="collection" if={comments.length}>
                         <li each={comment in comments} class="collection-item">
-                            <span class="badge"><small>{comment.name.split(' ')[0]}
-                                {comment.name.split(' ')[1][0]}.,
+                            <span class="badge"><small>{comment.name},
                                 {comment.datetime.replace(/[0-9]*-([0-9]*)-([0-9]*) ([0-9]*):([0-9]*):[0-9]*/, "$2. $1. $3:$4")}</small></span>
                             {comment.text}
                         </li>
