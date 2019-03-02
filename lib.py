@@ -63,6 +63,11 @@ class Presence():
             restr = self._parse_restriction(row[7])
             if restr and self.userid not in restr:
                 continue
+            # TODO: add column "before"
+            if row[1].startswith('Ned'):
+                h = 33
+            else:
+                h = 24
             o.append({
                 'id': row[0],
                 'title': row[1],
@@ -72,7 +77,7 @@ class Presence():
                 'capacity': row[5],
                 'courts': row[6],
                 'junior': 'JUN' in row[1],
-                'locked': 'JUN' not in row[1] and self.soon(row[2])
+                'locked': 'JUN' not in row[1] and self.late(row[2], h)
             })
         return {'data': o}
 
@@ -344,16 +349,11 @@ Tým Kometa Badminton""" % (title, starts, location, lastrowid)
             sys.stdout.write('Content-Type: text/html; charset=utf-8\n\n')
             sys.stdout.write(open('index.html').read())
 
-    def soon(self, t):
-        try:
-            t1 = datetime.datetime.strptime(t, '%Y-%m-%d %H:%M:%S')
-            now = datetime.datetime.now()
-            delta = t1 - now
-            if delta.days < 1:
-                return True
-            return False
-        except ValueError:
-            return False
+    def late(self, t, hours=24):
+        t1 = datetime.datetime.strptime(t, '%Y-%m-%d %H:%M:%S')
+        now = datetime.datetime.now()
+        delta = t1 - now
+        return (delta.seconds//3600 + delta.days*24) < hours
 
 if __name__ == '__main__':
 
