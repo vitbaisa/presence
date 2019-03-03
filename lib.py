@@ -227,8 +227,8 @@ class Presence():
         q = """INSERT INTO events
                (title, starts, duration, location, capacity, courts, restriction)
                VALUES (?, ?, ?, ?, ?, ?, ?);"""
-        self.cursor.execute(q, (title, starts, int(duration), location,
-                int(capacity), int(courts), users))
+        self.cursor.execute(q, (title.decode('utf-8'), starts, int(duration),
+                location.decode('utf-8'), int(capacity), int(courts), users))
         self.conn.commit()
         lastrowid = self.cursor.execute("SELECT last_insert_rowid();").fetchone()[0]
         if int(announce):
@@ -356,7 +356,6 @@ Tým Kometa Badminton""" % (title, starts, location, lastrowid)
         return (delta.seconds//3600 + delta.days*24) < hours
 
 if __name__ == '__main__':
-
     next_week = datetime.datetime.now() + datetime.timedelta(days=7)
     day = datetime.datetime.today().weekday()
     events = {
@@ -395,7 +394,7 @@ if __name__ == '__main__':
                 'duration': 2,
                 'capacity': 8,
                 'courts': 2,
-                'emailto': '1,2,3,4,5,9,14,21,28,36,43,45,80'
+                'emailto': '1,2,3,4,5,9,14,21,28,36,43,45,79,80'
             }],
         3: [{
                 'title': 'Čtvrtek, volná hra',
