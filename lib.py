@@ -179,7 +179,7 @@ class Presence():
             subject = "%s komentoval(a) událost %s (%s)" %\
                     (self.user['username'].encode('utf-8'), ev['title'].encode('utf-8'), ev['starts'].encode('utf-8'))
             self.sendmail(comment, self.admin_mails, subject)
-        self.cursor.execute(q, (int(eventid), self.userid, comment))
+        self.cursor.execute(q, (int(eventid), self.userid, comment.decode('utf-8')))
         self.conn.commit()
         # TODO: send comment id
         return {'data': 'OK'}

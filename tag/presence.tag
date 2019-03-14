@@ -19,7 +19,7 @@
             <div class="card">
                 <div class="card-content">
                     <div class="card-title">
-                        <span title={event.starts}>{event.title}</span>
+                        <span title={event.starts}>{event.title} <small>{event.starts.split(" ")[0]}</small></span>
                         <virtual if={registered}>
                             <a class="right btn red darken-2" onclick={unregister}>Odhlásit</a>
                         </virtual>
@@ -78,13 +78,6 @@
                             <span if={!user.admin}>{event.courts}</span>
                             <span if={presence.length && !event.junior}>,
                                 cena: ~{Math.ceil((event.courts * 230) / presence.length * 2)} Kč</span>
-                        </div>
-                        <div class="col s12 text-center center" if={user.admin}>
-                            <a if={user.admin} onclick={remove_event}
-                                    style="font-size: 50%;"
-                                    href="javascript:void(0);">
-                                Smazat
-                            </a>
                         </div>
                     </div>
                 </div>
@@ -190,6 +183,21 @@
             </div>
         </div>
     </div>
+    <!--
+    <div class="row">
+        <div class="col s12">
+            <div class="card" if={user.admin}>
+                <div class="card-content">
+                    <a if={user.admin} onclick={remove_event}
+                            style="font-size: 50%;"
+                            href="javascript:void(0);">
+                        Smazat
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    -->
 
     <style>
         @media only screen and (max-width: 500px) {
