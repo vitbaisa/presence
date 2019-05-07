@@ -376,7 +376,7 @@ if __name__ == '__main__':
                 'duration': 2,
                 'capacity': 24,
                 'courts': 6,
-                'emailto': "1-6,8-12,14,16-25,27,30,34,35,37,39,40,42,45,49,75,76,78"
+                'emailto': "1-6,8-12,14,16-25,27,30,34,35,37,39,40,42,45,49,75,76,78,85"
             }],
         2: [{
                 'title': 'Středa, JUNIOŘI',
@@ -403,7 +403,7 @@ if __name__ == '__main__':
                 'duration': 2,
                 'capacity': 20,
                 'courts': 5,
-                'emailto': "1-14,16-42,44-51,53,75-79"
+                'emailto': "1-14,16-42,44-51,53,75-79,85"
             }],
         6: [{
                 'title': 'Neděle, volná hra',
@@ -412,7 +412,7 @@ if __name__ == '__main__':
                 'duration': 2,
                 'capacity': 16,
                 'courts': 4,
-                'emailto': "1-14,16-42,44-51,53,75-79"
+                'emailto': "1-14,16-42,44-51,53,75-79,85"
             }]
     }
     if '--ucast' in sys.argv:
