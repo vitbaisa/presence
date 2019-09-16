@@ -24,6 +24,7 @@ class Presence():
     "A lightweight event-presence manager"
 
     is_admin = False
+    in_advance = 36
 
     def __init__(self, database):
         self.conn = sqlite3.connect(database)
@@ -55,7 +56,7 @@ class Presence():
     def events(self):
         q = """SELECT * FROM events
                 WHERE datetime(starts) >= datetime('now', 'localtime', '-2 hours')
-                AND datetime(starts) < datetime('now', 'localtime', '+8 days')
+                AND datetime(starts) < datetime('now', 'localtime', '+7 days')
                 ORDER BY starts ASC"""
         r = self.cursor.execute(q)
         o = []
@@ -63,11 +64,6 @@ class Presence():
             restr = self._parse_restriction(row[7])
             if restr and self.userid not in restr:
                 continue
-            # TODO: add column "before"
-            if row[1].startswith('Ned'):
-                h = 33
-            else:
-                h = 24
             o.append({
                 'id': row[0],
                 'title': row[1],
@@ -77,7 +73,9 @@ class Presence():
                 'capacity': row[5],
                 'courts': row[6],
                 'junior': 'JUN' in row[1],
-                'locked': 'JUN' not in row[1] and self.late(row[2], h)
+                'locked': 'JUN' not in row[1] and self.late(row[2], self.in_advance),
+                'in_advance': self.in_advance,
+                'restriction': restr
             })
         return {'data': o}
 
@@ -120,6 +118,8 @@ class Presence():
         r = self.cursor.execute(q)
         o = []
         for row in r.fetchall():
+            if row[3].startswith('_'): # inactive
+                continue
             i = {
                 'id': int(row[0]),
                 'username': row[1],
@@ -220,6 +220,14 @@ class Presence():
         self.conn.commit()
         return {'message': 'Event removed'}
 
+    def update_restriction(self, eventid, restriction):
+        if not self.is_admin:
+            return {'error': 'Only admin can change restriction'}
+        q = "UPDATE events SET restriction = ? WHERE id = ?"
+        r = self.cursor.execute(q, (restriction, int(eventid)))
+        self.conn.commit()
+        return {"data": "OK"}
+
     def create_event(self, users="", title="", starts="", duration=2,
             location="Zetor", capacity=0, courts=0, announce=0):
         if not self.is_admin:
@@ -244,9 +252,9 @@ class Presence():
                         emails.append(d[uid])
             body = """%s, %s, %s<br /><br />
 <a href="https://vitek.baisa.net/presence/#ev%d" target="_blank">Přihlaste se</a>
-nejpozději 24 hodin předem.<br /><br />
+nejpozději %d hodin předem.<br /><br />
 Na tento email neodpovídejte.<br /><br />
-Tým Kometa Badminton""" % (title, starts, location, lastrowid)
+Tým Kometa Badminton""" % (title, starts, location, lastrowid, self.in_advance)
             self.sendmail(body, emails, 'Nezapomeňte se přihlásit')
         return {'data': 'Event ID#%d created' % lastrowid}
 
@@ -349,7 +357,8 @@ Tým Kometa Badminton""" % (title, starts, location, lastrowid)
             sys.stdout.write('Content-Type: text/html; charset=utf-8\n\n')
             sys.stdout.write(open('index.html').read())
 
-    def late(self, t, hours=24):
+    def late(self, t, hours=0):
+        if not hours: hours = self.in_advance
         t1 = datetime.datetime.strptime(t, '%Y-%m-%d %H:%M:%S')
         now = datetime.datetime.now()
         delta = t1 - now
@@ -365,36 +374,36 @@ if __name__ == '__main__':
                 'location': 'Zetor',
                 'starts': next_week.strftime('%Y-%m-%d 17:30:00'),
                 'duration': 1.5,
-                'capacity': 30,
+                'capacity': 50,
                 'courts': 4,
-                'emailto': '4,5,26,30,49,54-60,63-64,67-74,77,81-84'
+                'emailto': '4,5,24,26,49,54,55,58,59,63,67-74,77,81-84,87,88,91,92'
             },
             {
                 'title': 'Pondělí, trénink',
                 'location': 'Zetor',
                 'starts': next_week.strftime('%Y-%m-%d 19:00:00'),
                 'duration': 2,
-                'capacity': 24,
+                'capacity': 50,
                 'courts': 6,
-                'emailto': "1-6,8-12,14,16-25,27,30,34,35,37,39,40,42,45,49,75,76,78,85"
+                'emailto': "1-6,8,9,10,12,14,16,19,21,23,25,26,27,30,34,39,40,42,45,49,75,76,79,85,89"
             }],
         2: [{
                 'title': 'Středa, JUNIOŘI',
                 'location': 'Zetor',
                 'starts': next_week.strftime('%Y-%m-%d 17:00:00'),
                 'duration': 2,
-                'capacity': 30,
+                'capacity': 50,
                 'courts': 4,
-                'emailto': '4,5,24,26,30,37,39,45,54-61,64,68-77,81,82,84'
+                'emailto': '4,5,24,26,54,55,58,59,63,67-77,81-84,87,88,91,92'
             },
             {
-                'title': 'Středa s Vojtou',
-                'location': 'Sprint',
-                'starts': next_week.strftime('%Y-%m-%d 07:30:00'),
-                'duration': 2,
-                'capacity': 8,
-                'courts': 2,
-                'emailto': '1,2,3,4,5,9,14,21,28,36,43,45,79,80'
+            'title': 'Středa se Standou',
+            'location': 'Sprint',
+            'starts': next_week.strftime('%Y-%m-%d 08:00:00'),
+            'duration': 2,
+            'capacity': 5,
+            'courts': 1,
+            'emailto': '1,2,4,5,26,30,36,43,45,50,79'
             }],
         3: [{
                 'title': 'Čtvrtek, volná hra',
@@ -403,16 +412,16 @@ if __name__ == '__main__':
                 'duration': 2,
                 'capacity': 20,
                 'courts': 5,
-                'emailto': "1-14,16-42,44-51,53,75-79,85"
+                'emailto': "1-6,8-10,12,14,16,17,19,21,23-27,29,30,33,34,37,38,39,40,42,45,47,49,75-79,85,89,90"
             }],
         6: [{
                 'title': 'Neděle, volná hra',
                 'location': 'Zetor',
-                'starts': next_week.strftime('%Y-%m-%d 19:00:00'),
+                'starts': next_week.strftime('%Y-%m-%d 18:00:00'),
                 'duration': 2,
                 'capacity': 16,
                 'courts': 4,
-                'emailto': "1-14,16-42,44-51,53,75-79,85"
+                'emailto': "1-6,8-10,12,13,16,17,19,21,23-27,29,30,33,34,37-42,44,45,47,49,75-79,85,89-91"
             }]
     }
     if '--ucast' in sys.argv:

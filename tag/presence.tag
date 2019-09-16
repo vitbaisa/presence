@@ -2,7 +2,7 @@
     <div class="row">
         <div class="col s12">
             <ul class="tabs">
-                <li class="tab col {s3: events.length >= 4, s4: events.length < 4}"
+                <li class="tab col {s3: events.length >= 4, s4: events.length == 3}"
                         each={ev, i in events} id="ev{ev.id}">
                     <a onclick={change_event} title="{ev.starts}/{ev.location}"
                             class={active: (location.hash == '#ev' + ev.id) || !location.hash.length, junior: ev.junior}
@@ -31,7 +31,7 @@
                         Termín je již plně obsazen, nelze se přihlásit.
                     </p>
                     <p if={!registered && event.locked} class="red-text text-lighten-2">
-                        Nelze se přihlašovat méně než 24 hodin předem.
+                        Nelze se přihlašovat méně než {event.in_advance} hodin předem.
                     </p>
                     <table class="table striped">
                         <tbody>
@@ -78,6 +78,17 @@
                             <span if={!user.admin}>{event.courts}</span>
                             <span if={presence.length && !event.junior}>,
                                 cena: ~{Math.ceil((event.courts * 230) / presence.length * 2)} Kč</span>
+                        </div>
+                    </div>
+                    <button class="btn" onclick={showUsers}
+                            if={user.admin && !show_users}>Zobrazit seznam lidí</button>
+                    <div class="row" if={user.admin && show_users}>
+                        <h5>Kdo vidí a může se přihlásit na tento termín</h5>
+                        <div class="col s6" each={u in users}>
+                            <input type="checkbox" id="att_{u.id}"
+                                    checked={event.restriction.indexOf(u.id) >= 0}
+                                    onchange={changeRestriction} />
+                            <label for="att_{u.id}">{u.nickname || u.username}</label>
                         </div>
                     </div>
                 </div>
@@ -261,11 +272,43 @@
         this.registered = false
         this.user = {}
         this.users = []
+        this.usersMap = {}
         this.showNewEvent = false
+        this.show_users = false
+
+        showUsers() {
+            this.show_users = true
+        }
 
         toggleNewEvent() {
             this.showNewEvent = true
             window.scrollTo(0, document.body.scrollHeight);
+        }
+
+        changeRestriction(ev) {
+            let uid = ev.item.u.id
+            if (ev.currentTarget.checked) {
+                if (this.event.restriction.indexOf(uid) == -1) {
+                    this.event.restriction.push(uid)
+                    this.event.restriction.sort(function (a, b) { return a - b})
+                }
+            }
+            else {
+                let ind = this.event.restriction.indexOf(uid)
+                if (ind != -1) {
+                    this.event.restriction.splice(ind, 1)
+                }
+            }
+            let restr = this.event.restriction.join(",")
+            $.ajax({
+                url: cgi + `/update_restriction?eventid=${this.event.id}&restriction=${restr}`,
+                success: (d) => {
+                    console.log(d)
+                },
+                error: (d) => {
+                    console.log('ERROR', d)
+                }
+            })
         }
 
         change_event(ev) {
@@ -374,6 +417,9 @@
                 url: cgi + '/users',
                 success: (d) => {
                     this.users = d.data
+                    for (let i=0; i<this.users.length; i++) {
+                        this.usersMap[this.users[i].id] = this.users[i].nickname || this.users[i].username
+                    }
                     this.update()
                 },
                 error: (d) => {
