@@ -164,10 +164,6 @@
                             <input type="text" value="Zetor" ref="nlocation" />
                             <label>Místo</label>
                         </div>
-                        <div class="col s3">
-                            <input type="checkbox" id="aevent" ref="aevent" />
-                            <label for="aevent">Email</label>
-                        </div>
                     </div>
                     <div class="row">
                         <div class="col s12">
@@ -393,8 +389,7 @@
                     '&users=' + users +
                     '&location=' + this.refs.nlocation.value +
                     '&capacity=' + this.refs.ncapacity.value +
-                    '&courts=' + this.refs.ncourts.value +
-                    '&announce=' + (this.refs.aevent.checked ? '1' : '0'),
+                    '&courts=' + this.refs.ncourts.value,
                 success: (d) => {
                     this.refs.date.value = ''
                     this.refs.time.value = '19:00:00'
@@ -402,7 +397,6 @@
                     this.refs.ncourts.value = 4
                     this.refs.ncapacity = 16
                     this.refs.eventname.value = ''
-                    this.refs.aevent.checked = false
                     $('input[id^="uid_"]').prop('checked', false)
                     this.get_events()
                 },

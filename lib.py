@@ -30,16 +30,6 @@ class Presence():
         self.conn = sqlite3.connect(database)
         self.cursor = self.conn.cursor()
 
-    def sendmail(self, text="", addresses=[], subject=""):
-        sender = 'noreply@sketchengine.co.uk'
-        msg = MIMEText(text, 'html')
-        msg['Subject'] = subject
-        msg['From'] = 'Kometa <' + sender + '>'
-        msg['To'] = 'kometabadec@seznam.cz'
-        server = smtplib.SMTP('localhost', timeout=10)
-        server.sendmail(sender, addresses, msg.as_string())
-        server.quit()
-
     def _parse_restriction(self, s):
         if not s.strip():
             return []
@@ -172,17 +162,14 @@ class Presence():
         self.conn.commit()
         return {'data': 'OK'}
 
-    def add_comment(self, eventid, comment, announce="0"):
+    def add_comment(self, eventid, comment):
         q = """INSERT INTO comments (eventid, userid, text) VALUES (?, ?, ?);"""
-        if int(announce):
-            ev = self.get_event(int(eventid))
-            subject = "%s komentoval(a) událost %s (%s)" %\
-                    (self.user['username'].encode('utf-8'), ev['title'].encode('utf-8'), ev['starts'].encode('utf-8'))
-            self.sendmail(comment, self.admin_mails, subject)
-        self.cursor.execute(q, (int(eventid), self.userid, comment.decode('utf-8')))
-        self.conn.commit()
-        # TODO: send comment id
-        return {'data': 'OK'}
+        try:
+            self.cursor.execute(q, (int(eventid), self.userid, comment.decode('utf-8')))
+            self.conn.commit()
+        except:
+            return {'error': 'Comment not saved'}
+        return {'message': 'OK'}
 
     def comments(self, eventid):
         q = """SELECT comments.id,
@@ -229,7 +216,7 @@ class Presence():
         return {"data": "OK"}
 
     def create_event(self, users="", title="", starts="", duration=2,
-            location="Zetor", capacity=0, courts=0, announce=0):
+            location="Zetor", capacity=0, courts=0):
         if not self.is_admin:
             return {'error': 'Only admin can create an event'}
         q = """INSERT INTO events
@@ -239,23 +226,6 @@ class Presence():
                 location.decode('utf-8'), int(capacity), int(courts), users))
         self.conn.commit()
         lastrowid = self.cursor.execute("SELECT last_insert_rowid();").fetchone()[0]
-        if int(announce):
-            emails = []
-            if not users:
-                emails = [x['email'] for x in self.users(1)['data']\
-                        if not x['email'].startswith('_')]
-            else:
-                d = dict([(x['id'], x['email']) for x in self.users(1)['data']\
-                        if not x['email'].startswith('_')])
-                for uid in self._parse_restriction(users):
-                    if d.get(uid, ''):
-                        emails.append(d[uid])
-            body = """%s, %s, %s<br /><br />
-<a href="https://vitek.baisa.net/presence/#ev%d" target="_blank">Přihlaste se</a>
-nejpozději %d hodin předem.<br /><br />
-Na tento email neodpovídejte.<br /><br />
-Tým Kometa Badminton""" % (title, starts, location, lastrowid, self.in_advance)
-            self.sendmail(body, emails, 'Nezapomeňte se přihlásit')
         return {'data': 'Event ID#%d created' % lastrowid}
 
     def register_guest(self, name, eventid):
@@ -324,7 +294,6 @@ Tým Kometa Badminton""" % (title, starts, location, lastrowid, self.in_advance)
                 'id': r[0],
                 'username': r[1],
                 'nickname': r[2],
-                'email': r[3],
                 'admin': r[1].encode('utf-8') in self.admins
             }
         return {}
@@ -376,7 +345,7 @@ if __name__ == '__main__':
                 'duration': 1.5,
                 'capacity': 50,
                 'courts': 4,
-                'emailto': '4,5,24,26,49,54,55,58,59,63,67-74,77,81-84,87,88,91,92,94'
+                'restriction': '4,5,24,26,49,54,55,58,59,63,67-74,77,81-84,87,88,91,92,94'
             },
             {
                 'title': 'Pondělí, trénink',
@@ -385,7 +354,7 @@ if __name__ == '__main__':
                 'duration': 2,
                 'capacity': 50,
                 'courts': 6,
-                'emailto': "1-6,8,9,10,12,14,16,19,21,23,25,26,27,30,34,39,40,42,45,49,75,76,79,85,89"
+                'restriction': "1-6,8,9,10,12,14,16,19,21,23,25,26,27,30,34,39,40,42,45,49,75,76,79,85,89"
             }],
         2: [{
                 'title': 'Středa, JUNIOŘI',
@@ -394,7 +363,7 @@ if __name__ == '__main__':
                 'duration': 2,
                 'capacity': 50,
                 'courts': 4,
-                'emailto': '4,5,24,26,54,55,58,59,63,67-77,81-84,87,88,91,92,94'
+                'restriction': '4,5,24,26,54,55,58,59,63,67-77,81-84,87,88,91,92,94'
             },
             {
             'title': 'Středa se Standou',
@@ -403,7 +372,7 @@ if __name__ == '__main__':
             'duration': 2,
             'capacity': 5,
             'courts': 1,
-            'emailto': '1,2,4,5,26,30,36,43,45,50,79,93'
+            'restriction': '1,2,4,5,26,30,36,43,45,50,79,93'
             }],
         3: [{
                 'title': 'Čtvrtek, volná hra',
@@ -412,7 +381,7 @@ if __name__ == '__main__':
                 'duration': 2,
                 'capacity': 20,
                 'courts': 5,
-                'emailto': "1-6,8-10,12,14,16,17,19,21,23-27,29,30,33,34,37,38,39,40,42,45,47,49,75-79,85,89,90"
+                'restriction': "1-6,8-10,12,14,16,17,19,21,23-27,29,30,33,34,37,38,39,40,42,45,47,49,75-79,85,89,90"
             }],
         6: [{
                 'title': 'Neděle, volná hra',
@@ -421,21 +390,17 @@ if __name__ == '__main__':
                 'duration': 2,
                 'capacity': 16,
                 'courts': 4,
-                'emailto': "1-6,8-10,12,13,16,17,19,21,23-27,29,30,33,34,37-42,44,45,47,49,75-79,85,89-91"
+                'restriction': "1-6,8-10,12,13,16,17,19,21,23-27,29,30,33,34,37-42,44,45,47,49,75-79,85,89-91"
             }]
     }
-    if '--ucast' in sys.argv:
-        # selong.v@seznam.cz
-        pass
-    else:
-        if day not in events.keys():
-            exit(0)
-        try:
-            p = Presence(sys.argv[1])
-            p.is_admin = True
-            for e in events[day]:
-                p.create_event(title=e['title'], starts=e['starts'],
-                    capacity=e['capacity'], location=e['location'],
-                    courts=e['courts'], announce=1, users=e['emailto'])
-        except Exception, e:
-            print "Failed to create event", str(e)
+    if day not in events.keys():
+        exit(0)
+    try:
+        p = Presence(sys.argv[1])
+        p.is_admin = True
+        for e in events[day]:
+            p.create_event(title=e['title'], starts=e['starts'],
+                capacity=e['capacity'], location=e['location'],
+                courts=e['courts'], users=e['restriction'])
+    except Exception, e:
+        print "Failed to create event", str(e)
