@@ -2,7 +2,7 @@
     <div class="row">
         <div class="col s12">
             <ul class="tabs">
-                <li class="tab col {s3: events.length >= 4, s4: events.length == 3}"
+                <li class="tab col {s3: events.length == 4, s4: events.length == 3, s2: events.length > 4}"
                         each={ev, i in events} id="ev{ev.id}">
                     <a onclick={change_event} title="{ev.starts}/{ev.location}"
                             class={active: (location.hash == '#ev' + ev.id) || !location.hash.length, junior: ev.junior}

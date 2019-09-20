@@ -56,7 +56,7 @@ class Presence():
     def events(self):
         q = """SELECT * FROM events
                 WHERE datetime(starts) >= datetime('now', 'localtime', '-2 hours')
-                AND datetime(starts) < datetime('now', 'localtime', '+7 days')
+                AND datetime(starts) < datetime('now', 'localtime', '+8 days')
                 ORDER BY starts ASC"""
         r = self.cursor.execute(q)
         o = []
@@ -376,7 +376,7 @@ if __name__ == '__main__':
                 'duration': 1.5,
                 'capacity': 50,
                 'courts': 4,
-                'emailto': '4,5,24,26,49,54,55,58,59,63,67-74,77,81-84,87,88,91,92'
+                'emailto': '4,5,24,26,49,54,55,58,59,63,67-74,77,81-84,87,88,91,92,94'
             },
             {
                 'title': 'Pondělí, trénink',
@@ -394,7 +394,7 @@ if __name__ == '__main__':
                 'duration': 2,
                 'capacity': 50,
                 'courts': 4,
-                'emailto': '4,5,24,26,54,55,58,59,63,67-77,81-84,87,88,91,92'
+                'emailto': '4,5,24,26,54,55,58,59,63,67-77,81-84,87,88,91,92,94'
             },
             {
             'title': 'Středa se Standou',
@@ -403,7 +403,7 @@ if __name__ == '__main__':
             'duration': 2,
             'capacity': 5,
             'courts': 1,
-            'emailto': '1,2,4,5,26,30,36,43,45,50,79'
+            'emailto': '1,2,4,5,26,30,36,43,45,50,79,93'
             }],
         3: [{
                 'title': 'Čtvrtek, volná hra',
