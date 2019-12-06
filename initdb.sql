@@ -10,10 +10,11 @@ CREATE TABLE events (
     title       CHAR(50) NOT NULL,
     starts      DATETIME,
     duration    INTEGER DEFAULT 2,
-    location    CHAR(50) DEFAULT "Zetor",
+    location    CHAR(50),
     capacity    INTEGER DEFAULT 16,
     courts      INTEGER DEFAULT 4,
-    restriction CHAR(128)
+    restriction CHAR(128),
+    pinned      INTEGER DEFAULT 0
 );
 
 CREATE TABLE presence (
