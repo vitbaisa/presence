@@ -6,12 +6,20 @@ import sys
 import cgi
 import sqlite3
 import json
+import random
+import hashlib
 import datetime
-import smtplib
-from email.mime.text import MIMEText
 from dateutil import tz
 
-# TODO: decorator is_admin
+"""
+TODO:
+    * decorator is_admin
+    * python 3
+    * remove jQuery, materialize
+    * sessions
+    * users
+    * favicon.ico
+"""
 
 def utc2local(t):
     t1 = datetime.datetime.strptime(t, '%Y-%m-%d %H:%M:%S')
@@ -21,10 +29,8 @@ def utc2local(t):
     return nt.astimezone(HERE).strftime('%Y-%m-%d %H:%M')
 
 class Presence():
-    "A lightweight event-presence manager"
-
     is_admin = False
-    in_advance = 36
+    in_advance = 36 # limit time for registering before event start
 
     def __init__(self, database):
         self.conn = sqlite3.connect(database)
@@ -77,6 +83,31 @@ class Presence():
             })
         return {'data': o}
 
+    def add_user(self):
+        pass
+
+    def login(self, username, password):
+        q = """SELECT password FROM users WHERE username = ?"""
+        r = self.cursor.execute(q).fetchone()[0]
+        if self.check_password(password, r):
+            # set session id
+            return {'message': 'ok'}
+        else:
+            return {'error': 'Password or username is invalid'}
+
+    def check_password(self, raw_password, enc_password):
+        algo, salt, hsh = enc_password.split('$')
+        return hsh == get_hexdigest(algo, salt, raw_password)
+
+    def get_hexdigest(self, alg, salt, p):
+        return hashlib.sha1('%s%s' % (salt, hash)).hexdigest()
+
+    def set_password(self, raw_password):
+        algo = 'sha1'
+        salt = self.get_hexdigest(algo, str(random.random()), str(random.random()))[:5]
+        hsh = self.get_hexdigest(algo, salt, raw_password)
+        return '%s$%s$%s' % (algo, salt, hsh)
+    
     def stats(self):
         q = """SELECT userid, count(*) as sum
                 FROM presence
@@ -255,7 +286,7 @@ class Presence():
         e = self.get_event(int(eventid))
         return float(players) / e['capacity']
 
-    def register(self, eventid, redirect='0'):
+    def register(self, eventid):
         if self.check_capacity(eventid) >= 1.0:
             return {'error': 'Capacity full'}
         if self.userid in [x['userid'] for x in self.presence(eventid)['data']\
@@ -267,9 +298,8 @@ class Presence():
         return {'data': 'registered'}
 
     def unregister(self, eventid):
-        q = """DELETE FROM presence
-                WHERE userid = ?
-                AND eventid = ?"""
+        # TODO: only user itself or admin!
+        q = """DELETE FROM presence WHERE userid = ? AND eventid = ?"""
         r = self.cursor.execute(q, (self.userid, int(eventid)))
         self.conn.commit()
         return {'data': 'unregistered'}
@@ -323,13 +353,8 @@ class Presence():
             parameters = dict([(k, form.getvalue(k)) for k in form])
             response = apply(method, [], parameters)
             response['user'] = self.user
-            if 'redirect' in parameters and 'eventid' in parameters:
-                sys.stdout.write('Content-Type: text/html; charset=utf-8\n\n')
-                sys.stdout.write(open('redirect.html').read() %\
-                        str(parameters['eventid']))
-            else:
-                sys.stdout.write('Content-Type: application/json; charset=utf-8\n\n')
-                sys.stdout.write(json.dumps(response) + '\n')
+            sys.stdout.write('Content-Type: application/json; charset=utf-8\n\n')
+            sys.stdout.write(json.dumps(response) + '\n')
         else:
             sys.stdout.write('Content-Type: text/html; charset=utf-8\n\n')
             sys.stdout.write(open('index.html').read())
@@ -341,73 +366,31 @@ class Presence():
         delta = t1 - now
         return (delta.seconds//3600 + delta.days*24) < hours
 
+    def get_cronevents(self):
+        events = json.load(open('events.json'))
+        for ev in events["events"]:
+            ev["restriction"] = self._parse_restriction(ev["restriction"])
+        return {'data': events}
+
+    def set_cronevents(self, data=''):
+        with open("events.json", "w") as f:
+            f.write(data)
+            return {'message': 'testing'}
+        return {'error': 'Something went terrigly wrong...'}
+
+
 if __name__ == '__main__':
     next_week = datetime.datetime.now() + datetime.timedelta(days=7)
     day = datetime.datetime.today().weekday()
-    events = {
-        0: [
-            {
-                'title': 'Pondělí, JUNIOŘI',
-                'location': 'Zetor',
-                'starts': next_week.strftime('%Y-%m-%d 17:30:00'),
-                'duration': 1.5,
-                'capacity': 50,
-                'courts': 4,
-                'restriction': '4,5,24,26,49,54,55,58,59,63,67-74,77,81-84,87,88,91,92,94'
-            },
-            {
-                'title': 'Pondělí, trénink',
-                'location': 'Zetor',
-                'starts': next_week.strftime('%Y-%m-%d 19:00:00'),
-                'duration': 2,
-                'capacity': 50,
-                'courts': 6,
-                'restriction': "1-6,8,9,12,14,16,19,21,23,25,26,30,34,39,40,42,45,49,75,76,79,85,89,95"
-            }],
-        2: [{
-                'title': 'Středa, JUNIOŘI',
-                'location': 'Zetor',
-                'starts': next_week.strftime('%Y-%m-%d 17:00:00'),
-                'duration': 2,
-                'capacity': 50,
-                'courts': 4,
-                'restriction': '4,5,24,26,54,55,58,59,63,67-77,81-84,87,88,91,92,94'
-            },
-            {
-            'title': 'Středa se Standou',
-            'location': 'Sprint',
-            'starts': next_week.strftime('%Y-%m-%d 08:00:00'),
-            'duration': 2,
-            'capacity': 5,
-            'courts': 1,
-            'restriction': '1,2,4,5,26,30,36,43,45,50,79,93'
-            }],
-        3: [{
-                'title': 'Čtvrtek, volná hra',
-                'location': 'Zetor',
-                'starts': next_week.strftime('%Y-%m-%d 19:00:00'),
-                'duration': 2,
-                'capacity': 20,
-                'courts': 5,
-                'restriction': "1-6,8,9,12,14,16,17,19,21,23-26,29,30,33,34,37,38,39,40,42,45,47,49,50,75-79,85,89,90,95"
-            }],
-        6: [{
-                'title': 'Neděle, volná hra',
-                'location': 'Zetor',
-                'starts': next_week.strftime('%Y-%m-%d 18:00:00'),
-                'duration': 2,
-                'capacity': 16,
-                'courts': 4,
-                'restriction': "1-6,8,9,12,13,16,17,19,21,23-26,29,30,33,34,37-42,44,45,47,49,50,75-79,85,89-91,95"
-            }]
-    }
-    if day not in events.keys():
-        exit(0)
+    events = json.load(open('events.json'))
     try:
         p = Presence(sys.argv[1])
         p.is_admin = True
-        for e in events[day]:
-            p.create_event(title=e['title'], starts=e['starts'],
+        for e in events:
+            if not day == e.day:
+                break
+            new_start = next_week.strftime(e['starts'])
+            p.create_event(title=e['title'], starts=new_start,
                 capacity=e['capacity'], location=e['location'],
                 courts=e['courts'], users=e['restriction'])
     except Exception, e:

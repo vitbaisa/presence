@@ -190,21 +190,50 @@
             </div>
         </div>
     </div>
-    <!--
     <div class="row">
         <div class="col s12">
-            <div class="card" if={user.admin}>
+            <button class="btn" onclick={onShowRepeated}
+                    if={!showRepeatedEvents}>Zobrazit opakující se akce</button>
+            <div class="card" if={user.admin && showRepeatedEvents}>
                 <div class="card-content">
-                    <a if={user.admin} onclick={remove_event}
-                            style="font-size: 50%;"
-                            href="javascript:void(0);">
-                        Smazat
-                    </a>
+                    <div class="card-title">Opakující se události</div>
+                    <p>POZOR: Změny v této tabulce se projeví nejdřív za týden.
+                        Juniorské tréninky musí mít v názvu "JUNIOŘI"!</p>
+                    <div class="row" each={item, idx in cronevents}>
+                        <div class="col s3 m1">
+                            <select name="day" class="browser-default">
+                                <option each={day, dayidx in days} value={dayidx} selected={item.day == dayidx}>{day}</option>
+                            </select>
+                        </div>
+                        <div class="col s9 m3">
+                            <input name="title" value={item.title} onchange={changeCE} />
+                        </div>
+                        <div class="col s6 m3">
+                            <input name="location" value={item.location} onchange={changeCE} />
+                        </div>
+                        <div class="col s6 m2">
+                            <input name="starts" value={item.starts} onchange={changeCE} />
+                        </div>
+                        <div class="col s4 m1">
+                            <input name="duration" type="number" min="1" max="12" value={item.duration} onchange={changeCE} />
+                        </div>
+                        <div class="col s4 m1">
+                            <input name="capacity" type="number" min="1" max="50" value={item.capacity} onchange={changeCE} />
+                        </div>
+                        <div class="col s4 m1">
+                            <input name="courts" type="number" min="1" max="6" value={item.courts} onchange={changeCE} /></td>
+                        </div>
+                        <div class="col s6 m3" each={u in users}>
+                            <input type="checkbox" id="ce_{idx}_{u.id}"
+                                    checked={item.restriction.indexOf(u.id) >= 0}
+                                    onchange={changeCronEventRestriction.bind(this, idx)} />
+                            <label for="ce_{idx}_{u.id}">{u.nickname || u.username}</label>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-    -->
 
     <style>
         @media only screen and (max-width: 500px) {
@@ -271,6 +300,49 @@
         this.usersMap = {}
         this.showNewEvent = false
         this.show_users = false
+        this.cronevents = []
+        this.days = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek", "Sobota", "Neděle"]
+        this.showRepeatedEvents = false
+
+        onShowRepeated() {
+            this.showRepeatedEvents = !this.showRepeatedEvents
+        }
+
+        changeCE(e) {
+            this.cronevents[e.item.idx][e.target.name] = e.target.value
+            this.set_cronevents()
+        }
+
+        get_cronevents() {
+            $.ajax({
+                url: cgi + "/get_cronevents",
+                success: function (payload) {
+                    this.cronevents = payload.data.events
+                    this.update()
+                }.bind(this),
+                error: function (d) {
+                    console.log(d)
+                }
+            })
+        }
+
+        set_cronevents() {
+            for (let i=0; i<this.cronevents.length; i++) {
+                this.cronevents[i].restriction = this.cronevents[i].restriction.join(',')
+            }
+            $.ajax({
+                type: "POST",
+                url: cgi + "/set_cronevents",
+                data: "data=" + encodeURIComponent(JSON.stringify({'events': this.cronevents})),
+                success: function (payload) {
+                    this.get_cronevents()
+                    this.update()
+                }.bind(this),
+                error: function (payload) {
+                    console.log(payload)
+                }
+            })
+        }
 
         showUsers() {
             this.show_users = true
@@ -278,7 +350,24 @@
 
         toggleNewEvent() {
             this.showNewEvent = true
-            window.scrollTo(0, document.body.scrollHeight);
+            window.scrollTo(0, document.body.scrollHeight)
+        }
+
+        changeCronEventRestriction(idx, ev) {
+            let uid = ev.item.u.id
+            if (ev.currentTarget.checked) {
+                if (this.cronevents[idx].restriction.indexOf(uid) == -1) {
+                    this.cronevents[idx].restriction.push(uid)
+                    this.cronevents[idx].restriction.sort()
+                }
+            }
+            else {
+                let ind = this.cronevents[idx].restriction.indexOf(uid)
+                if (ind != -1) {
+                    this.cronevents[idx].restriction.splice(ind, 1)
+                }
+            }
+            this.set_cronevents()
         }
 
         changeRestriction(ev) {
@@ -298,10 +387,10 @@
             let restr = this.event.restriction.join(",")
             $.ajax({
                 url: cgi + `/update_restriction?eventid=${this.event.id}&restriction=${restr}`,
-                success: (d) => {
+                success: function (d) {
                     console.log(d)
                 },
-                error: (d) => {
+                error: function (d) {
                     console.log('ERROR', d)
                 }
             })
@@ -320,12 +409,12 @@
             $.ajax({
                 url: cgi + '/courts?eventid=' + this.event.id
                         + '&courts=' + courts,
-                success: (d) => {
+                success: function (d) {
                     this.event.courts = courts
                     this.update()
-                },
-                error: (d) => {
-                    console.log(d);
+                }.bind(this),
+                error: function (d) {
+                    console.log(d)
                 }
             })
         }
@@ -333,11 +422,11 @@
         rm_user(event) {
             $.ajax({
                 url: cgi + '/remove_user?id=' + event.item.item.id,
-                success: (d) => {
+                success: function (d) {
                     this.get_presence()
-                },
-                error: (d) => {
-                    console.log(d);
+                }.bind(this),
+                error: function (d) {
+                    console.log(d)
                 }
             })
         }
@@ -346,12 +435,12 @@
             let capacity = this.refs.ccapacity.value
             $.ajax({
                 url: cgi + '/capacity?eventid=' + this.event.id + '&capacity=' + capacity,
-                success: (d) => {
+                success: function (d) {
                     this.event.capacity = capacity
                     this.update()
-                },
-                error: (d) => {
-                    console.log(d);
+                }.bind(this),
+                error: function (d) {
+                    console.log(d)
                 }
             })
         }
@@ -363,21 +452,20 @@
         remove_event() {
             $.ajax({
                 url: cgi + '/remove_event?eventid=' + this.event.id,
-                success: (d) => {
+                success: function (d) {
                     this.get_events()
-                },
-                error: (d) => {
-                    console.log('ERROR', d)
+                }.bind(this),
+                error: function (d) {
+                    console.log(d)
                 }
             })
-
         }
 
         create_event() {
             let users = ''
             if ($('input#uid_all').not(':checked')) {
                 let userarray = []
-                $('input[id^="uid_"]:checked').each((i, e) => {
+                $('input[id^="uid_"]:checked').each(function (i, e) {
                     userarray.push(e.dataset.id)
                 })
                 users = userarray.join(',')
@@ -390,7 +478,7 @@
                     '&location=' + this.refs.nlocation.value +
                     '&capacity=' + this.refs.ncapacity.value +
                     '&courts=' + this.refs.ncourts.value,
-                success: (d) => {
+                success: function (d) {
                     this.refs.date.value = ''
                     this.refs.time.value = '19:00:00'
                     this.refs.nlocation.value = 'Zetor'
@@ -399,9 +487,9 @@
                     this.refs.eventname.value = ''
                     $('input[id^="uid_"]').prop('checked', false)
                     this.get_events()
-                },
-                error: (d) => {
-                    console.log('ERROR', d)
+                }.bind(this),
+                error: function (d) {
+                    console.log(d)
                 }
             })
         }
@@ -409,14 +497,14 @@
         get_users() {
             $.ajax({
                 url: cgi + '/users',
-                success: (d) => {
+                success: function (d) {
                     this.users = d.data
                     for (let i=0; i<this.users.length; i++) {
                         this.usersMap[this.users[i].id] = this.users[i].nickname || this.users[i].username
                     }
                     this.update()
-                },
-                error: (d) => {
+                }.bind(this),
+                error: function (d) {
                     console.log(d)
                 }
             })
@@ -426,7 +514,7 @@
         get_presence() {
             $.ajax({
                 url: cgi + '/presence?eventid=' + this.event.id,
-                success: (d) => {
+                success: function (d) {
                     this.presence = []
                     if (this.event.junior) {
                         let coaches = []
@@ -452,8 +540,8 @@
                         }
                     }
                     this.update()
-                },
-                error: (d) => {
+                }.bind(this),
+                error: function (d) {
                     console.log(d)
                 }
             })
@@ -463,16 +551,15 @@
             let name = this.refs.guest.value
             $.ajax({
                 url: cgi + '/register_guest?eventid=' + this.event.id + '&name=' + name,
-                success: (d) => {
+                success: function (d) {
                     this.get_presence()
                     this.refs.guest.value = ""
                     this.update()
-                },
-                error: (d) => {
+                }.bind(this),
+                error: function (d) {
                     console.log(d)
                 }
             })
-
         }
 
         add_comment(ev) {
@@ -483,16 +570,16 @@
             $.ajax({
                 url: cgi + '/add_comment?eventid=' + this.event.id +
                         '&comment=' + encodeURIComponent(comment),
-                success: (d) => {
+                success: function (d) {
                     this.get_comments()
-                },
-                error: (d) => {
+                }.bind(this),
+                error: function (d) {
                     console.log(d)
                 },
-                complete: () => {
+                complete: function () {
                     this.refs.new_comment.value = ""
                     this.update()
-                }
+                }.bind(this)
             })
             return false
         }
@@ -500,7 +587,7 @@
         get_events() {
             $.ajax({
                 url: cgi + '/events',
-                success: (d) => {
+                success: function (d) {
                     this.user = d.user
                     if (!d.data.length) {
                         return
@@ -519,10 +606,11 @@
                     this.event = this.events[ind]
                     this.get_presence()
                     this.get_comments()
+                    this.user.admin && this.get_cronevents()
                     this.update()
-                    $('.tabs').tabs();
-                },
-                error: (d) => {
+                    $('.tabs').tabs()
+                }.bind(this),
+                error: function (d) {
                     console.log(d)
                 }
             })
@@ -532,11 +620,11 @@
         get_comments() {
             $.ajax({
                 url: cgi + '/comments?eventid=' + this.event.id,
-                success: (d) => {
+                success: function (d) {
                     this.comments = d.data
                     this.update()
-                },
-                error: (d) => {
+                }.bind(this),
+                error: function (d) {
                     console.log(d)
                 }
             })
@@ -545,10 +633,10 @@
         register() {
             $.ajax({
                 url: cgi + '/register?eventid=' + this.event.id,
-                success: (d) => {
+                success: function (d) {
                     this.get_presence()
-                },
-                error: (d) => {
+                }.bind(this),
+                error: function (d) {
                     console.log(d)
                 }
             })
@@ -557,17 +645,17 @@
         unregister() {
             $.ajax({
                 url: cgi + '/unregister?eventid=' + this.event.id,
-                success: (d) => {
+                success: function (d) {
                     this.get_presence()
-                },
-                error: (d) => {
+                }.bind(this),
+                error: function (d) {
                     console.log(d)
                 }
             })
         }
 
-        this.on('updated', () => {
-            $('input + label').addClass('active');
+        this.on('updated', function () {
+            $('input + label').addClass('active')
         })
     </script>
 </presence>

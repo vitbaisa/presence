@@ -2,7 +2,8 @@ CREATE TABLE users (
     id          INTEGER PRIMARY KEY,
     username    CHAR(30) NOT NULL UNIQUE,
     nickname    CHAR(30) UNIQUE,
-    email       CHAR(50) NOT NULL UNIQUE
+    email       CHAR(50) NOT NULL UNIQUE,
+    password    CHAR(30) NOT NULL
 );
 
 CREATE TABLE events (
@@ -36,4 +37,11 @@ CREATE TABLE comments (
     text        TEXT,
     FOREIGN KEY (userid)  REFERENCES users(id),
     FOREIGN KEY (eventid) REFERENCES events(id)
+);
+
+CREATE TABLE sessions (
+    id          INTEGER PRIMARY KEY,
+    sessionid   TEXT,
+    datetime    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (userid) REFERENCES users(id)
 );
