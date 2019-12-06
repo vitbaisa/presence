@@ -45,8 +45,16 @@ class Presence():
 
     def events(self):
         q = """SELECT * FROM events
-                WHERE datetime(starts) >= datetime('now', 'localtime', '-2 hours')
-                AND datetime(starts) < datetime('now', 'localtime', '+8 days')
+                WHERE (
+                    datetime(starts) >= datetime('now', 'localtime', '-2 hours')
+                    AND
+                    datetime(starts) < datetime('now', 'localtime', '+8 days')
+                )
+                OR (
+                    datetime(starts) >= datetime('now', 'localtime', '-2 hours')
+                    AND
+                    pinned = 1
+                )
                 ORDER BY starts ASC"""
         r = self.cursor.execute(q)
         o = []
