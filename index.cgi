@@ -4,10 +4,10 @@
 from lib import Presence
 
 class App(Presence):
-    admins = ['Vít Baisa', 'Zdeněk Mejzlík', 'Hana Pospíšilová', 'Martin Svoboda', 'jan.vodak']
+    admins = ['Vít Baisa', 'Zdeněk Mejzlík', 'Hana Pospíšilová', 'Martin Svoboda', 'jan.vodak', "Marián König"]
     coach_ids = [4, 5, 24, 26, 30, 49]
-    admin_mails = ['vit.baisa@gmail.com']
     db = 'presence.db'
+    passfile = ".htpasswd"
 
     def __init__(self):
         Presence.__init__(self, self.db)

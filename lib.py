@@ -7,7 +7,6 @@ import cgi
 import sqlite3
 import json
 import random
-import hashlib
 import datetime
 from dateutil import tz
 
@@ -16,8 +15,6 @@ TODO:
     * decorator is_admin
     * python 3
     * remove jQuery, materialize
-    * sessions
-    * users
     * favicon.ico
 """
 
@@ -83,31 +80,23 @@ class Presence():
             })
         return {'data': o}
 
-    def add_user(self):
-        pass
+    def add_user(self, username, fullname, password):
+        import subprocess as sp
+        if not self.is_admin:
+            return {'error': 'You are not admin'}
+        if self.get_user(username):
+            return {'error': "Username already in use"}
+        q = "INSERT INTO users (username, nickname, email) VALUES (?, ?, ?)"
+        self.cursor.execute(q, (username, fullname.decode('utf-8'), username + '@dummymail.cz'))
+        self.conn.commit()
+        pf = getattr(self, "passfile", None)
+        command = ["htpasswd", "-i", pf, username]
+        p = sp.Popen(command, stdin=sp.PIPE, stdout=sp.PIPE)
+        p.communicate(input=password)
+        if p.returncode == 0:
+            return {'message': "User %s created" % username}
+        return {'error': 'User not created'}
 
-    def login(self, username, password):
-        q = """SELECT password FROM users WHERE username = ?"""
-        r = self.cursor.execute(q).fetchone()[0]
-        if self.check_password(password, r):
-            # set session id
-            return {'message': 'ok'}
-        else:
-            return {'error': 'Password or username is invalid'}
-
-    def check_password(self, raw_password, enc_password):
-        algo, salt, hsh = enc_password.split('$')
-        return hsh == get_hexdigest(algo, salt, raw_password)
-
-    def get_hexdigest(self, alg, salt, p):
-        return hashlib.sha1('%s%s' % (salt, hash)).hexdigest()
-
-    def set_password(self, raw_password):
-        algo = 'sha1'
-        salt = self.get_hexdigest(algo, str(random.random()), str(random.random()))[:5]
-        hsh = self.get_hexdigest(algo, salt, raw_password)
-        return '%s$%s$%s' % (algo, salt, hsh)
-    
     def stats(self):
         q = """SELECT userid, count(*) as sum
                 FROM presence
@@ -142,19 +131,16 @@ class Presence():
         else:
             return {'error': 'You are not admin'}
 
-    def users(self, full=0):
-        q = "SELECT id, username, nickname, email FROM users ORDER BY nickname, username;"
+    def users(self):
+        q = "SELECT id, username, nickname FROM users ORDER BY nickname, username;"
         r = self.cursor.execute(q)
         o = []
         for row in r.fetchall():
-            if row[3].startswith('_'): # inactive
-                continue
             i = {
                 'id': int(row[0]),
                 'username': row[1],
                 'nickname': row[2]
             }
-            if full: i['email'] = row[3]
             o.append(i)
         return {'data': o}
 

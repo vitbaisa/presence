@@ -123,13 +123,10 @@
             </div>
         </div>
     </div>
-    <div class="row" if={user.admin && !showNewEvent}>
-        <div class="col s12">
-            <a class="btn btn-floating" href="javascript:void(0);" onclick={toggleNewEvent}>+</a>
-        </div>
-    </div>
     <div class="row">
         <div class="col s12">
+            <button if={user.admin && !showNewEvent} class="btn"
+                    onclick={toggleNewEvent}>Vytvořit novou událost</button>
             <div class="card" if={user.admin && showNewEvent}>
                 <div class="card-content">
                     <span class="card-title">Nová událost</span>
@@ -177,7 +174,7 @@
                                             id={"uid_" + u.id} data-id={u.id} />
                                     <label for={"uid_" + u.id}>{u.nickname || u.username}</label>
                                 </div>
-                            </ul>
+                            </div>
                         </div>
                     </div>
                     <div class="row">
@@ -228,6 +225,32 @@
                                     checked={item.restriction.indexOf(u.id) >= 0}
                                     onchange={changeCronEventRestriction.bind(this, idx)} />
                             <label for="ce_{idx}_{u.id}">{u.nickname || u.username}</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col s12">
+            <button if={!showNewUser && user.admin}
+                    onclick={onShowNewUser} class="btn">Přidat hráče</button>
+            <div class="card" if={user.admin && showNewUser}>
+                <div class="card-content">
+                    <div class="card-title">Nový hráč</div>
+                    <p>Uživatelské jméno smí obsahovat pouze malá písmena, žádnou mezeru.</p>
+                    <div class="row">
+                        <div class="col s12 m6 l3">
+                            <input ref="username" placeholder="Uživatelské jméno" />
+                        </div>
+                        <div class="col s12 m6 l3">
+                            <input ref="fullname" placeholder="Plné jméno" />
+                        </div>
+                        <div class="col s12 m6 l3">
+                            <input ref="password" type="password" />
+                        </div>
+                        <div class="col s12 m6 l3">
+                            <button onclick={add_user} class="btn">Přidat hráče</button>
                         </div>
                     </div>
                 </div>
@@ -303,9 +326,31 @@
         this.cronevents = []
         this.days = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek", "Sobota", "Neděle"]
         this.showRepeatedEvents = false
+        this.showNewUser = false
 
         onShowRepeated() {
             this.showRepeatedEvents = !this.showRepeatedEvents
+        }
+
+        onShowNewUser() {
+            this.showNewUser = true
+        }
+
+        add_user() {
+            $.ajax({
+                type: "POST",
+                url: cgi + "/add_user",
+                data: "username=" + encodeURIComponent(this.refs.username.value) +
+                    "&fullname=" + encodeURIComponent(this.refs.fullname.value) + 
+                    "&password=" + encodeURIComponent(this.refs.password.value),
+                success: function (payload) {
+                    this.showNewUser = false
+                    this.get_users()
+                }.bind(this),
+                error: function (payload) {
+                    console.log(payload)
+                }
+            })
         }
 
         changeCE(e) {
