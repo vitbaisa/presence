@@ -9,7 +9,7 @@
                             href="#">{ev.title}</a>
                 </li>
                 <li class="tab col s12" if={!events.length}>
-                    <a>Není naplánovaná žádná událost!</a>
+                    <a>Žádná dostupná událost</a>
                 </li>
             </ul>
         </div>
@@ -187,11 +187,11 @@
             </div>
         </div>
     </div>
-    <div class="row">
+    <div class="row" if={user.admin}>
         <div class="col s12">
             <button class="btn" onclick={onShowRepeated}
                     if={!showRepeatedEvents}>Zobrazit opakující se akce</button>
-            <div class="card" if={user.admin && showRepeatedEvents}>
+            <div class="card" if={showRepeatedEvents}>
                 <div class="card-content">
                     <div class="card-title">Opakující se události</div>
                     <p>POZOR: Změny v této tabulce se projeví nejdřív za týden.
