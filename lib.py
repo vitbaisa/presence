@@ -29,9 +29,10 @@ class Presence():
     is_admin = False
     in_advance = 36 # limit time for registering before event start
 
-    def __init__(self, database):
+    def __init__(self, database, eventsfn):
         self.conn = sqlite3.connect(database)
         self.cursor = self.conn.cursor()
+        self.events_file = eventsfn
 
     def _parse_restriction(self, s):
         if not s.strip():
@@ -353,13 +354,17 @@ class Presence():
         return (delta.seconds//3600 + delta.days*24) < hours
 
     def get_cronevents(self):
-        events = json.load(open('events.json'))
+        events = json.load(open(self.events_file))
         for ev in events["events"]:
             ev["restriction"] = self._parse_restriction(ev["restriction"])
         return {'data': events}
 
     def set_cronevents(self, data=''):
-        with open("events.json", "w") as f:
+        from datetime import datetime
+        now = datetime.now().strftime("%y_%m_%d")
+        from shutil import copyfile
+        copyfile(self.events_file, self.events_file + "_" + now)
+        with open(self.events_file, "w") as f:
             f.write(data)
             return {'message': 'testing'}
         return {'error': 'Something went terrigly wrong...'}
@@ -368,16 +373,16 @@ class Presence():
 if __name__ == '__main__':
     next_week = datetime.datetime.now() + datetime.timedelta(days=7)
     day = datetime.datetime.today().weekday()
-    events = json.load(open('events.json'))
     try:
-        p = Presence(sys.argv[1])
+        p = Presence(sys.argv[1], sys.argv[2])
+        events = json.load(open(p.events_file))
         p.is_admin = True
-        for e in events:
-            if not day == e.day:
-                break
+        for e in events["events"]:
+            if not day == e["day"]:
+                continue
             new_start = next_week.strftime(e['starts'])
-            p.create_event(title=e['title'], starts=new_start,
-                capacity=e['capacity'], location=e['location'],
+            p.create_event(title=e['title'].encode('utf-8'), starts=new_start,
+                capacity=e['capacity'], location=e['location'].encode('utf-8'),
                 courts=e['courts'], users=e['restriction'])
-    except Exception, e:
-        print "Failed to create event", str(e)
+    except Exception, msg:
+        print "Failed to create event", str(msg)

@@ -198,7 +198,7 @@
                         Juniorské tréninky musí mít v názvu "JUNIOŘI"!</p>
                     <div class="row" each={item, idx in cronevents}>
                         <div class="col s3 m1">
-                            <select name="day" class="browser-default">
+                            <select name="day" class="browser-default" onchange={changeCE}>
                                 <option each={day, dayidx in days} value={dayidx} selected={item.day == dayidx}>{day}</option>
                             </select>
                         </div>
@@ -355,6 +355,9 @@
 
         changeCE(e) {
             this.cronevents[e.item.idx][e.target.name] = e.target.value
+            if (e.target.name == "day") {
+                this.cronevents[e.item.idx][e.target.name] = parseInt(e.target.value)
+            }
             this.set_cronevents()
         }
 
