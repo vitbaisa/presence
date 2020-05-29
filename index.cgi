@@ -5,7 +5,7 @@ from lib import Presence
 
 class App(Presence):
     admins = ['Vít Baisa', 'Zdeněk Mejzlík', 'Hana Pospíšilová', 'Martin Svoboda', 'jan.vodak', "Marián König"]
-    coach_ids = [4, 5, 24, 26, 30, 49]
+    coach_ids = [4, 5, 24, 26, 30, 49, 97, 98]
     db = 'presence.db'
     passfile = ".htpasswd"
     eventsfile = "/var/www/baisa.net/vitek/presence/events.json"

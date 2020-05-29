@@ -3,4 +3,4 @@
 .htpasswd
 *.pyc
 inittest.sql
-events.json
+events.json*
