@@ -19,7 +19,7 @@
             <div class="card">
                 <div class="card-content">
                     <div class="card-title">
-                        <span title={event.starts}>{event.title} <small>{event.starts.split(" ")[0]}</small></span>
+                        <span>{event.title} <small>{event.starts.split(" ")[1].substr(0, 5)}</small></span>
                         <virtual if={registered}>
                             <a class="right btn red darken-2" onclick={unregister}>Odhlásit</a>
                         </virtual>
