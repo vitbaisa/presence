@@ -66,10 +66,13 @@ class Presence():
             restr = self._parse_restriction(row[7])
             if restr and self.userid not in restr:
                 continue
+            starts = datetime.datetime.strptime(row[2], "%Y-%m-%d %H:%M:%S")
             o.append({
                 'id': row[0],
                 'title': row[1],
                 'starts': row[2],
+                'date': starts.strftime("%-d. %-m."),
+                'time': starts.strftime("%H.%M"),
                 'lasts': row[3],
                 'location': row[4],
                 'capacity': row[5],
