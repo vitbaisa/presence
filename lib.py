@@ -43,6 +43,8 @@ class Presence():
             if '-' in i:
                 a, b = i.split('-')
                 l.extend(range(int(a), int(b)+1))
+            elif not i.strip():
+                continue
             else:
                 l.append(int(i))
         return l
@@ -245,14 +247,14 @@ class Presence():
         return {"data": "OK"}
 
     def create_event(self, users="", title="", starts="", duration=2,
-            location="Zetor", capacity=0, courts=0):
+            location="Zetor", capacity=0, courts=0, pinned=0):
         if not self.is_admin:
             return {'error': 'Only admin can create an event'}
         q = """INSERT INTO events
-               (title, starts, duration, location, capacity, courts, restriction)
-               VALUES (?, ?, ?, ?, ?, ?, ?);"""
+               (title, starts, duration, location, capacity, courts, restriction, pinned)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?);"""
         self.cursor.execute(q, (title.decode('utf-8'), starts, int(duration),
-                location.decode('utf-8'), int(capacity), int(courts), users))
+                location.decode('utf-8'), int(capacity), int(courts), users, int(pinned)))
         self.conn.commit()
         lastrowid = self.cursor.execute("SELECT last_insert_rowid();").fetchone()[0]
         return {'data': 'Event ID#%d created' % lastrowid}

@@ -2,7 +2,7 @@
     <div class="row">
         <div class="col s12">
             <ul class="tabs">
-                <li class="tab col {s3: events.length == 4, s4: events.length == 3, s2: events.length > 4}"
+                <li class="tab col {s3: events.length == 4, s4: events.length == 3, s2: events.length > 4 && events.length <=6, s1: events.length > 6}"
                         each={ev, i in events} id="ev{ev.id}">
                     <a onclick={change_event} title="{ev.starts}/{ev.location}"
                             class={active: (location.hash == '#ev' + ev.id) || !location.hash.length, junior: ev.junior}
@@ -150,26 +150,31 @@
                             <input type="number" ref="nduration" value="2" />
                             <label>Trvání</label>
                         </div>
-                        <div class="col s3 m3 input-field">
+                        <div class="col s3 m2 input-field">
                             <input type="number" min="1" ref="ncourts"
                                     value="4" />
                             <label>Kurty</label>
                         </div>
-                        <div class="col s3 m3 input-field">
+                        <div class="col s3 m2 input-field">
                             <input type="number" min="1" ref="ncapacity"
                                     value="16" />
                             <label>Kapacita</label>
                         </div>
-                        <div class="col s3 m3 input-field">
+                        <div class="col s3 m2 input-field">
                             <input type="text" value="Zetor" ref="nlocation" />
                             <label>Místo</label>
+                        </div>
+                        <div class="col s3 m2">
+                            <input type="checkbox" id="pinned" />
+                            <label for="pinned" class="active">Připnout</label>
                         </div>
                     </div>
                     <div class="row">
                         <div class="col s12">
                             <div class="row">
                                 <div class="col s6 l3">
-                                    <input type="checkbox" checked id="uid_all" name="suser" onchange={check_all} />
+                                    <input type="checkbox" checked id="uid_all"
+                                            name="suser" onchange={check_all} />
                                     <label for="uid_all" class="active">Všichni</label>
                                 </div>
                                 <div class="col s6 l3" each={u in users}>
@@ -505,6 +510,11 @@
             })
         }
 
+        pinEvent(event) {
+            if (($ev.target).is(':checked')) {
+            }
+        }
+
         check_all(ev) {
             $('input[id^="uid_"]').prop('checked', $(ev.target).is(':checked'))
         }
@@ -530,6 +540,7 @@
                 })
                 users = userarray.join(',')
             }
+            let pinned = document.getElementById("pinned").checked
             $.ajax({
                 url: cgi + '/create_event?title=' + this.refs.eventname.value +
                     '&starts=' + this.refs.date.value + " " + this.refs.time.value +
@@ -537,7 +548,8 @@
                     '&users=' + users +
                     '&location=' + this.refs.nlocation.value +
                     '&capacity=' + this.refs.ncapacity.value +
-                    '&courts=' + this.refs.ncourts.value,
+                    '&courts=' + this.refs.ncourts.value +
+                    '&pinned=' + (pinned ? 1 : 0),
                 success: function (d) {
                     this.refs.date.value = ''
                     this.refs.time.value = '19:00:00'
