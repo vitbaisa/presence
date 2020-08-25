@@ -138,6 +138,7 @@
                             <input type="text" ref="eventname" />
                             <label>Název akce</label>
                         </div>
+                        <!-- TODO https://github.com/ygricks/simple-datetimepicker -->
                         <div class="col s6 m2 input-field">
                             <input type="text" ref="date" placeholder="RRRR-MM-DD">
                             <label>Datum</label>
@@ -341,7 +342,7 @@
         this.showNewEvent = false
         this.show_users = false
         this.cronevents = []
-        this.days = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek", "Sobota", "Neděle"]
+        this.days = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek", "Sobota", "Neděle", "Nikdy"]
         this.showRepeatedEvents = false
         this.showNewUser = false
 
@@ -440,7 +441,7 @@
             if (ev.currentTarget.checked) {
                 if (this.event.restriction.indexOf(uid) == -1) {
                     this.event.restriction.push(uid)
-                    this.event.restriction.sort(function (a, b) { return a - b})
+                    this.event.restriction.sort()
                 }
             }
             else {
@@ -532,6 +533,7 @@
         }
 
         create_event() {
+            // TODO: add event creator to restriction list
             let users = ''
             if ($('input#uid_all').not(':checked')) {
                 let userarray = []
