@@ -2,7 +2,7 @@
     <div class="row">
         <div class="col s12">
             <ul class="tabs">
-                <li class="tab col {s3: events.length == 4, s4: events.length == 3, s2: events.length > 4}"
+                <li class="tab col {s3: events.length == 4, s4: events.length == 3, s2: events.length > 4 && events.length <=6, s1: events.length > 6}"
                         each={ev, i in events} id="ev{ev.id}">
                     <a onclick={change_event} title="{ev.starts}/{ev.location}"
                             class={active: (location.hash == '#ev' + ev.id) || !location.hash.length, junior: ev.junior}
@@ -138,6 +138,7 @@
                             <input type="text" ref="eventname" />
                             <label>Název akce</label>
                         </div>
+                        <!-- TODO https://github.com/ygricks/simple-datetimepicker -->
                         <div class="col s6 m2 input-field">
                             <input type="text" ref="date" placeholder="RRRR-MM-DD">
                             <label>Datum</label>
@@ -150,26 +151,31 @@
                             <input type="number" ref="nduration" value="2" />
                             <label>Trvání</label>
                         </div>
-                        <div class="col s3 m3 input-field">
+                        <div class="col s3 m2 input-field">
                             <input type="number" min="1" ref="ncourts"
                                     value="4" />
                             <label>Kurty</label>
                         </div>
-                        <div class="col s3 m3 input-field">
+                        <div class="col s3 m2 input-field">
                             <input type="number" min="1" ref="ncapacity"
                                     value="16" />
                             <label>Kapacita</label>
                         </div>
-                        <div class="col s3 m3 input-field">
+                        <div class="col s3 m2 input-field">
                             <input type="text" value="Zetor" ref="nlocation" />
                             <label>Místo</label>
+                        </div>
+                        <div class="col s3 m2">
+                            <input type="checkbox" id="pinned" />
+                            <label for="pinned" class="active">Připnout</label>
                         </div>
                     </div>
                     <div class="row">
                         <div class="col s12">
                             <div class="row">
                                 <div class="col s6 l3">
-                                    <input type="checkbox" checked id="uid_all" name="suser" onchange={check_all} />
+                                    <input type="checkbox" checked id="uid_all"
+                                            name="suser" onchange={check_all} />
                                     <label for="uid_all" class="active">Všichni</label>
                                 </div>
                                 <div class="col s6 l3" each={u in users}>
@@ -336,7 +342,7 @@
         this.showNewEvent = false
         this.show_users = false
         this.cronevents = []
-        this.days = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek", "Sobota", "Neděle"]
+        this.days = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek", "Sobota", "Neděle", "Nikdy"]
         this.showRepeatedEvents = false
         this.showNewUser = false
 
@@ -440,7 +446,7 @@
             if (ev.currentTarget.checked) {
                 if (this.event.restriction.indexOf(uid) == -1) {
                     this.event.restriction.push(uid)
-                    this.event.restriction.sort(function (a, b) { return a - b})
+                    this.event.restriction.sort()
                 }
             }
             else {
@@ -510,6 +516,11 @@
             }))
         }
 
+        pinEvent(event) {
+            if (($ev.target).is(':checked')) {
+            }
+        }
+
         check_all(ev) {
             document.querySelectorAll('input[id^="uid_"]').forEach(function (i) {
                 i.checked = true
@@ -529,6 +540,7 @@
         }
 
         create_event() {
+            // TODO: add event creator to restriction list
             let users = ''
             if (document.querySelectorAll('input#uid_all:not(:checked)').length) {
                 let userarray = []
@@ -537,6 +549,7 @@
                 })
                 users = userarray.join(',')
             }
+            let pinned = document.getElementById("pinned").checked
             let xhr = new XMLHttpRequest()
             xhr.withCredentials = true
             xhr.onload = function () {
@@ -557,7 +570,8 @@
                 users: users,
                 location: this.refs.nlocation.value,
                 capacity: this.refs.ncapacity.value,
-                courts: this.refs.ncourts.value
+                courts: this.refs.ncourts.value,
+                pinned: pinner ? 1 : 0
             }))
         }
 
