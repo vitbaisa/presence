@@ -19,7 +19,10 @@
             <div class="card">
                 <div class="card-content">
                     <div class="card-title">
-                        <span title={event.starts}>{event.title} <small>{event.starts.split(" ")[0]}</small></span>
+                        <span>{event.title}
+                            <span class="date">{event.date}</span>
+                            <span class="time">od {event.time}</span>
+                        </span>
                         <virtual if={registered}>
                             <a class="right btn red darken-2" onclick={unregister}>Odhlásit</a>
                         </virtual>
@@ -281,6 +284,15 @@
             .input-field.col label {
                 left: 0rem;
             }
+        }
+        span.time, span.date {
+            font-size: 45%;
+            font-family: Arial, sans-serif;
+            border-radius: 4px;
+            padding: 2px 3px;
+            background-color: #26A69A;
+            color: white;
+            font-weight: bold;
         }
         footer {
             text-align: center;
