@@ -1,86 +1,10 @@
-#!/usr/bin/env python
-#coding=utf-8
+#!/usr/bin/python3
 
-import os
 import sys
-import cgi
-import sqlite3
-import json
-import random
 import datetime
 from dateutil import tz
 
-"""
-TODO:
-    * decorator is_admin
-    * python 3
-    * remove jQuery, materialize
-    * favicon.ico
-"""
-
-def utc2local(t):
-    t1 = datetime.datetime.strptime(t, '%Y-%m-%d %H:%M:%S')
-    HERE = tz.tzlocal()
-    UTC = tz.gettz('UTC')
-    nt = t1.replace(tzinfo=UTC)
-    return nt.astimezone(HERE).strftime('%Y-%m-%d %H:%M')
-
 class Presence():
-    is_admin = False
-    in_advance = 36 # limit time for registering before event start
-
-    def __init__(self, database, eventsfn):
-        self.conn = sqlite3.connect(database)
-        self.cursor = self.conn.cursor()
-        self.events_file = eventsfn
-
-    def _parse_restriction(self, s):
-        if not s.strip():
-            return []
-        l = []
-        items = s.split(',')
-        for i in items:
-            if '-' in i:
-                a, b = i.split('-')
-                l.extend(range(int(a), int(b)+1))
-            else:
-                l.append(int(i))
-        return l
-
-    def events(self):
-        q = """SELECT * FROM events
-                WHERE (
-                    datetime(starts) >= datetime('now', 'localtime', '-2 hours')
-                    AND
-                    datetime(starts) < datetime('now', 'localtime', '+8 days')
-                )
-                OR (
-                    datetime(starts) >= datetime('now', 'localtime', '-2 hours')
-                    AND
-                    pinned = 1
-                )
-                ORDER BY starts ASC"""
-        r = self.cursor.execute(q)
-        o = []
-        for row in r.fetchall():
-            restr = self._parse_restriction(row[7])
-            if restr and self.userid not in restr:
-                continue
-            o.append({
-                'id': row[0],
-                'title': row[1],
-                'starts': row[2],
-                'lasts': row[3],
-                'location': row[4],
-                'capacity': row[5],
-                'courts': row[6],
-                'junior': 'JUN' in row[1],
-                'locked': 'JUN' not in row[1] and self.late(row[2], self.in_advance),
-                'in_advance': self.in_advance,
-                'restriction': restr
-            })
-        return {'data': o}
-
     def add_user(self, username, fullname, password):
         import subprocess as sp
         if not self.is_admin:
@@ -385,4 +309,4 @@ if __name__ == '__main__':
                 capacity=e['capacity'], location=e['location'].encode('utf-8'),
                 courts=e['courts'], users=e['restriction'])
     except Exception, msg:
-        print "Failed to create event", str(msg)
+        print("Failed to create event", str(msg))

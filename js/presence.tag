@@ -337,20 +337,20 @@
         }
 
         add_user() {
-            $.ajax({
-                type: "POST",
-                url: cgi + "/add_user",
-                data: "username=" + encodeURIComponent(this.refs.username.value) +
-                    "&fullname=" + encodeURIComponent(this.refs.fullname.value) + 
-                    "&password=" + encodeURIComponent(this.refs.password.value),
-                success: function (payload) {
+            let xhr = new XMLHttpRequest()
+            xhr.withCredentials = true
+            xhr.onload = function () {
+                if (xhr.status === 200) {
                     this.showNewUser = false
                     this.get_users()
-                }.bind(this),
-                error: function (payload) {
-                    console.log(payload)
                 }
-            })
+            }.bind(this)
+            xhr.open('POST', "/add_user")
+            xhr.send(JSON.stringify({
+                username: encodeURIComponent(this.refs.username.value),
+                fullname: encodeURIComponent(this.refs.fullname.value),
+                password: encodeURIComponent(this.refs.password.value)
+            }))
         }
 
         changeCE(e) {
@@ -362,34 +362,39 @@
         }
 
         get_cronevents() {
-            $.ajax({
-                url: cgi + "/get_cronevents",
-                success: function (payload) {
+            let xhr = new XMLHttpRequest()
+            xhr.withCredentials = true
+            xhr.onload = function () {
+                if (xhr.status === 200) {
+                    let payload = JSON.parse(xhr.responseText)
                     this.cronevents = payload.data.events
                     this.update()
-                }.bind(this),
-                error: function (d) {
-                    console.log(d)
                 }
-            })
+                else {
+                    console.log(xhr.responseText)
+                }
+            }.bind(this)
+            xhr.open("GET", "/get_cronevents")
+            xhr.send()
         }
 
         set_cronevents() {
             for (let i=0; i<this.cronevents.length; i++) {
                 this.cronevents[i].restriction = this.cronevents[i].restriction.join(',')
             }
-            $.ajax({
-                type: "POST",
-                url: cgi + "/set_cronevents",
-                data: "data=" + encodeURIComponent(JSON.stringify({'events': this.cronevents})),
-                success: function (payload) {
+            let xhr = new XMLHttpRequest()
+            xhr.withCredentials = true
+            xhr.onload = function () {
+                if (xhr.status === 200) {
                     this.get_cronevents()
                     this.update()
-                }.bind(this),
-                error: function (payload) {
-                    console.log(payload)
                 }
-            })
+                else {
+                    console.log(xhr.responseText)
+                }
+            }.bind(this)
+            xhr.open("POST", "/set_cronevents")
+            xhr.send(JSON.stringify({data: {events: this.cronevents}}))
         }
 
         showUsers() {
@@ -433,15 +438,14 @@
                 }
             }
             let restr = this.event.restriction.join(",")
-            $.ajax({
-                url: cgi + `/update_restriction?eventid=${this.event.id}&restriction=${restr}`,
-                success: function (d) {
-                    console.log(d)
-                },
-                error: function (d) {
-                    console.log('ERROR', d)
-                }
-            })
+            let xhr = new XMLHttpRequest()
+            xhr.withCredentials = true
+            xhr.onload = function () {}
+            xhr.open('POST', "/update_restriction")
+            xhr.send(JSON.stringify({
+                eventid: this.event.id,
+                restriction: restr
+            }))
         }
 
         change_event(ev) {
@@ -454,160 +458,164 @@
 
         change_courts(ev) {
             let courts = this.refs.ccourts.value
-            $.ajax({
-                url: cgi + '/courts?eventid=' + this.event.id
-                        + '&courts=' + courts,
-                success: function (d) {
-                    this.event.courts = courts
-                    this.update()
-                }.bind(this),
-                error: function (d) {
-                    console.log(d)
-                }
-            })
+            let xhr = new XMLHttpRequest()
+            xhr.withCredentials = true
+            xhr.onload = function () {
+                this.event.courts = courts
+                this.update()
+            }.bind(this)
+            xhr.open('GET', "/courts")
+            xhr.send(JSON.stringify({
+                eventid: this.event.id,
+                courts: courts
+            }))
         }
 
         rm_user(event) {
-            $.ajax({
-                url: cgi + '/remove_user?id=' + event.item.item.id,
-                success: function (d) {
-                    this.get_presence()
-                }.bind(this),
-                error: function (d) {
-                    console.log(d)
-                }
-            })
+            let xhr = new XMLHttpRequest()
+            xhr.withCredentials = true
+            xhr.onload = function () {
+                this.get_presence()
+            }.bind(this)
+            xhr.open('GET', "/remove_user")
+            xhr.send(JSON.stringify({
+                id: event.item.item.id
+            }))
         }
 
         change_capacity(ev) {
             let capacity = this.refs.ccapacity.value
-            $.ajax({
-                url: cgi + '/capacity?eventid=' + this.event.id + '&capacity=' + capacity,
-                success: function (d) {
-                    this.event.capacity = capacity
-                    this.update()
-                }.bind(this),
-                error: function (d) {
-                    console.log(d)
-                }
-            })
+            let xhr = new XMLHttpRequest()
+            xhr.withCredentials = true
+            xhr.onload = function () {
+                this.event.capacity = capacity
+                this.update()
+            }.bind(this)
+            xhr.open('GET', "/capacity")
+            xhr.send(JSON.stringify({
+                eventid: this.event.id,
+                capacity: capacity
+            }))
         }
 
         check_all(ev) {
-            $('input[id^="uid_"]').prop('checked', $(ev.target).is(':checked'))
+            document.querySelectorAll('input[id^="uid_"]').forEach(function (i) {
+                i.checked = true
+            })
         }
 
         remove_event() {
-            $.ajax({
-                url: cgi + '/remove_event?eventid=' + this.event.id,
-                success: function (d) {
-                    this.get_events()
-                }.bind(this),
-                error: function (d) {
-                    console.log(d)
-                }
-            })
+            let xhr = new XMLHttpRequest()
+            xhr.withCredentials = true
+            xhr.onload = function () {
+                this.get_events()
+            }.bind(this)
+            xhr.open('GET', "/remove_event")
+            xhr.send(JSON.stringify({
+                eventid: this.event.id
+            }))
         }
 
         create_event() {
             let users = ''
-            if ($('input#uid_all').not(':checked')) {
+            if (document.querySelectorAll('input#uid_all:not(:checked)').length) {
                 let userarray = []
-                $('input[id^="uid_"]:checked').each(function (i, e) {
+                document.querySelectorAll('input[id^="uid_"]:checked').forEach(function (e) {
                     userarray.push(e.dataset.id)
                 })
                 users = userarray.join(',')
             }
-            $.ajax({
-                url: cgi + '/create_event?title=' + this.refs.eventname.value +
-                    '&starts=' + this.refs.date.value + " " + this.refs.time.value +
-                    '&duration=' + this.refs.nduration.value +
-                    '&users=' + users +
-                    '&location=' + this.refs.nlocation.value +
-                    '&capacity=' + this.refs.ncapacity.value +
-                    '&courts=' + this.refs.ncourts.value,
-                success: function (d) {
-                    this.refs.date.value = ''
-                    this.refs.time.value = '19:00:00'
-                    this.refs.nlocation.value = 'Zetor'
-                    this.refs.ncourts.value = 4
-                    this.refs.ncapacity = 16
-                    this.refs.eventname.value = ''
-                    $('input[id^="uid_"]').prop('checked', false)
-                    this.get_events()
-                }.bind(this),
-                error: function (d) {
-                    console.log(d)
-                }
-            })
+            let xhr = new XMLHttpRequest()
+            xhr.withCredentials = true
+            xhr.onload = function () {
+                this.refs.date.value = ''
+                this.refs.time.value = '19:00:00'
+                this.refs.nlocation.value = 'Zetor'
+                this.refs.ncourts.value = 4
+                this.refs.ncapacity = 16
+                this.refs.eventname.value = ''
+                document.querySelectorAll('input[id^="uid_"]').forEach(function (i) { i.checked = false })
+                this.get_events()
+            }.bind(this)
+            xhr.open('GET', "/create_event")
+            xhr.send(JSON.stringify({
+                title: this.refs.eventname.value,
+                starts: this.refs.date.value + " " + this.refs.time.value,
+                duration: this.refs.nduration.value,
+                users: users,
+                location: this.refs.nlocation.value,
+                capacity: this.refs.ncapacity.value,
+                courts: this.refs.ncourts.value
+            }))
         }
 
         get_users() {
-            $.ajax({
-                url: cgi + '/users',
-                success: function (d) {
-                    this.users = d.data
-                    for (let i=0; i<this.users.length; i++) {
-                        this.usersMap[this.users[i].id] = this.users[i].nickname || this.users[i].username
-                    }
-                    this.update()
-                }.bind(this),
-                error: function (d) {
-                    console.log(d)
+            let xhr = new XMLHttpRequest()
+            xhr.withCredentials = true
+            xhr.onload = function () {
+                let payload = JSON.parse(xhr.responseText)
+                this.users = payload.data
+                for (let i=0; i<this.users.length; i++) {
+                    this.usersMap[this.users[i].id] = this.users[i].nickname || this.users[i].username
                 }
-            })
+                this.update()
+            }.bind(this)
+            xhr.open('GET', "/users")
+            xhr.send()
         }
         this.get_users()
 
         get_presence() {
-            $.ajax({
-                url: cgi + '/presence?eventid=' + this.event.id,
-                success: function (d) {
-                    this.presence = []
-                    if (this.event.junior) {
-                        let coaches = []
-                        for (let i=0; i<d.data.length; i++) {
-                            if (d.data[i].coach) {
-                                coaches.push(d.data[i])
-                            }
-                            else {
-                                this.presence.push(d.data[i])
-                            }
+            let xhr = new XMLHttpRequest()
+            xhr.withCredentials = true
+            xhr.onload = function () {
+                let d = JSON.parse(xhr.responseText)
+                this.presence = []
+                if (this.event.junior) {
+                    let coaches = []
+                    for (let i=0; i<d.data.length; i++) {
+                        if (d.data[i].coach) {
+                            coaches.push(d.data[i])
                         }
-                        for (let i=0; i<coaches.length; i++) {
-                            this.presence.push(coaches[i])
+                        else {
+                            this.presence.push(d.data[i])
                         }
                     }
-                    else {
-                        this.presence = d.data
+                    for (let i=0; i<coaches.length; i++) {
+                        this.presence.push(coaches[i])
                     }
-                    this.registered = false
-                    for (let i=0; i<this.presence.length; i++) {
-                        if (this.presence[i].userid == this.user.id) {
-                            this.registered = true
-                        }
-                    }
-                    this.update()
-                }.bind(this),
-                error: function (d) {
-                    console.log(d)
                 }
-            })
+                else {
+                    this.presence = d.data
+                }
+                this.registered = false
+                for (let i=0; i<this.presence.length; i++) {
+                    if (this.presence[i].userid == this.user.id) {
+                        this.registered = true
+                    }
+                }
+                this.update()
+            }.bind(this)
+            xhr.open('GET', "/presence")
+            xhr.send(JSON.stringify({
+                eventid: this.event.id
+            }))
         }
 
         add_guest() {
             let name = this.refs.guest.value
-            $.ajax({
-                url: cgi + '/register_guest?eventid=' + this.event.id + '&name=' + name,
-                success: function (d) {
-                    this.get_presence()
-                    this.refs.guest.value = ""
-                    this.update()
-                }.bind(this),
-                error: function (d) {
-                    console.log(d)
-                }
-            })
+            let xhr = new XMLHttpRequest()
+            xhr.withCredentials = true
+            xhr.onload = function () {
+                this.get_presence()
+                this.refs.guest.value = ""
+                this.update()
+            }.bind(this)
+            xhr.open('GET', "/register_guest")
+            xhr.send(JSON.stringify({
+                eventid: this.event.id,
+                name: name
+            }))
         }
 
         add_comment(ev) {
@@ -615,95 +623,94 @@
             if (!comment.length) {
                 return false
             }
-            $.ajax({
-                url: cgi + '/add_comment?eventid=' + this.event.id +
-                        '&comment=' + encodeURIComponent(comment),
-                success: function (d) {
-                    this.get_comments()
-                }.bind(this),
-                error: function (d) {
-                    console.log(d)
-                },
-                complete: function () {
-                    this.refs.new_comment.value = ""
-                    this.update()
-                }.bind(this)
-            })
+            let xhr = new XMLHttpRequest()
+            xhr.withCredentials = true
+            xhr.onload = function () {
+                this.refs.new_comment.value = ""
+                this.get_comments()
+            }.bind(this)
+            xhr.open('GET', "/add_comment")
+            xhr.send(JSON.stringify({
+                eventid: this.event.id,
+                comment: encodeURIComponent(comment)
+            }))
             return false
         }
 
         get_events() {
-            $.ajax({
-                url: cgi + '/events',
-                success: function (d) {
-                    this.user = d.user
-                    if (!d.data.length) {
-                        return
-                    }
-                    this.events = d.data 
-                    let ind = 0
-                    if (location.hash) {
-                        let h = parseInt(location.hash.substr(3))
-                        for (let i=0; i<this.events.length; i++) {
-                           if (this.events[i].id == h) {
-                             ind = i
-                             break
-                           }
-                        }
-                    }
-                    this.event = this.events[ind]
-                    this.get_presence()
-                    this.get_comments()
-                    this.user.admin && this.get_cronevents()
-                    this.update()
-                    $('.tabs').tabs()
-                }.bind(this),
-                error: function (d) {
-                    console.log(d)
+            let xhr = new XMLHttpRequest()
+            xhr.withCredentials = true
+            xhr.onload = function () {
+                let d = JSON.parse(xhr.responseText)
+                this.user = d.user
+                if (!d.data.length) {
+                    return
                 }
-            })
+                this.events = d.data 
+                let ind = 0
+                if (location.hash) {
+                    let h = parseInt(location.hash.substr(3))
+                    for (let i=0; i<this.events.length; i++) {
+                       if (this.events[i].id == h) {
+                         ind = i
+                         break
+                       }
+                    }
+                }
+                this.event = this.events[ind]
+                this.get_presence()
+                this.get_comments()
+                this.user.admin && this.get_cronevents()
+                this.update()
+                document.querySelector('.tabs').tabs()
+            }.bind(this)
+            xhr.open('GET', "/events")
+            xhr.send()
         }
         this.get_events()
 
         get_comments() {
-            $.ajax({
-                url: cgi + '/comments?eventid=' + this.event.id,
-                success: function (d) {
-                    this.comments = d.data
-                    this.update()
-                }.bind(this),
-                error: function (d) {
-                    console.log(d)
-                }
-            })
+            let xhr = new XMLHttpRequest()
+            xhr.withCredentials = true
+            xhr.onload = function () {
+                let payload = JSON.parse(xhr.responseText)
+                this.comments = payload.data
+                this.update()
+            }.bind(this)
+            xhr.open('GET', "/comments")
+            xhr.send(JSON.stringify({
+                eventid: this.event.id
+            }))
         }
 
         register() {
-            $.ajax({
-                url: cgi + '/register?eventid=' + this.event.id,
-                success: function (d) {
-                    this.get_presence()
-                }.bind(this),
-                error: function (d) {
-                    console.log(d)
-                }
-            })
+            let xhr = new XMLHttpRequest()
+            xhr.withCredentials = true
+            xhr.onload = function () {
+                this.get_presence()
+            }.bind(this)
+            xhr.open('GET', "/register")
+            xhr.send(JSON.stringify({
+                eventid: this.event.id
+            }))
         }
 
         unregister() {
-            $.ajax({
-                url: cgi + '/unregister?eventid=' + this.event.id,
-                success: function (d) {
-                    this.get_presence()
-                }.bind(this),
-                error: function (d) {
-                    console.log(d)
-                }
-            })
+            let xhr = new XMLHttpRequest()
+            xhr.withCredentials = true
+            xhr.onload = function () {
+                this.get_presence()
+            }.bind(this)
+            xhr.open('GET', "/unregister")
+            xhr.send(JSON.stringify({
+                eventid: this.event.id
+            }))
         }
 
         this.on('updated', function () {
-            $('input + label').addClass('active')
+            document.querySelectorAll('input + label').forEach(function (el) {
+                el.classList.add('active')
+            })
         })
     </script>
 </presence>
