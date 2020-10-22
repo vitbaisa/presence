@@ -40,8 +40,8 @@
                         <tbody>
                             <tr each={item, i in presence}>
                                 <td>{i+1}</td>
-                                <td class={bold: item.userid == user.id, coach: item.coach && event.junior}>
-                                    {item.name || item.nickname || item.username}
+                                <td class={bold: item.userid == user.username, coach: item.coach && event.junior}>
+                                    {item.name || item.fullname || item.username}
                                     <span if={item.name}>(host)</span>
                                     <span if={event.junior && item.coach}>(trenér)</span>
                                     <a if={user.admin} onclick={rm_user}
@@ -88,10 +88,10 @@
                     <div class="row" if={user.admin && show_users}>
                         <h5>Kdo vidí a může se přihlásit na tento termín</h5>
                         <div class="col s6" each={u in users}>
-                            <input type="checkbox" id="att_{u.id}"
-                                    checked={event.restriction.indexOf(u.id) >= 0}
+                            <input type="checkbox" id="att_{u.username}"
+                                    checked={event.restriction.indexOf(u.username) >= 0}
                                     onchange={changeRestriction} />
-                            <label for="att_{u.id}">{u.nickname || u.username}</label>
+                            <label for="att_{u.username}">{u.fullname || u.username}</label>
                         </div>
                     </div>
                 </div>
@@ -138,7 +138,6 @@
                             <input type="text" ref="eventname" />
                             <label>Název akce</label>
                         </div>
-                        <!-- TODO https://github.com/ygricks/simple-datetimepicker -->
                         <div class="col s6 m2 input-field">
                             <input type="text" ref="date" placeholder="RRRR-MM-DD">
                             <label>Datum</label>
@@ -180,8 +179,8 @@
                                 </div>
                                 <div class="col s6 l3" each={u in users}>
                                     <input type="checkbox" name="suser"
-                                            id={"uid_" + u.id} data-id={u.id} />
-                                    <label for={"uid_" + u.id}>{u.nickname || u.username}</label>
+                                            id={"uid_" + u.username} data-id={u.username} />
+                                    <label for={"uid_" + u.username}>{u.fullname || u.username}</label>
                                 </div>
                             </div>
                         </div>
@@ -230,10 +229,10 @@
                             <input name="courts" type="number" min="1" max="6" value={item.courts} onchange={changeCE} /></td>
                         </div>
                         <div class="col s6 m3" each={u in users}>
-                            <input type="checkbox" id="ce_{idx}_{u.id}"
-                                    checked={item.restriction.indexOf(u.id) >= 0}
+                            <input type="checkbox" id="ce_{idx}_{u.username}"
+                                    checked={item.restriction.indexOf(u.username) >= 0}
                                     onchange={changeCronEventRestriction.bind(this, idx)} />
-                            <label for="ce_{idx}_{u.id}">{u.nickname || u.username}</label>
+                            <label for="ce_{idx}_{u.username}">{u.fullname || u.username}</label>
                         </div>
                     </div>
                 </div>
@@ -274,6 +273,9 @@
             }
             .card .card-content {
                 padding: .5em;
+            }
+            .row {
+                width: 100%;
             }
             .row .col {
                 padding: 0 .2em;
@@ -363,7 +365,7 @@
                     this.get_users()
                 }
             }.bind(this)
-            xhr.open('POST', "/add_user")
+            xhr.open('POST', "/user")
             xhr.send(JSON.stringify({
                 username: encodeURIComponent(this.refs.username.value),
                 fullname: encodeURIComponent(this.refs.fullname.value),
@@ -392,7 +394,7 @@
                     console.log(xhr.responseText)
                 }
             }.bind(this)
-            xhr.open("GET", "/get_cronevents")
+            xhr.open("GET", "/cronevents")
             xhr.send()
         }
 
@@ -411,7 +413,7 @@
                     console.log(xhr.responseText)
                 }
             }.bind(this)
-            xhr.open("POST", "/set_cronevents")
+            xhr.open("POST", "/cronevents")
             xhr.send(JSON.stringify({data: {events: this.cronevents}}))
         }
 
@@ -425,7 +427,7 @@
         }
 
         changeCronEventRestriction(idx, ev) {
-            let uid = ev.item.u.id
+            let uid = ev.item.u.username
             if (ev.currentTarget.checked) {
                 if (this.cronevents[idx].restriction.indexOf(uid) == -1) {
                     this.cronevents[idx].restriction.push(uid)
@@ -442,7 +444,7 @@
         }
 
         changeRestriction(ev) {
-            let uid = ev.item.u.id
+            let uid = ev.item.u.username
             if (ev.currentTarget.checked) {
                 if (this.event.restriction.indexOf(uid) == -1) {
                     this.event.restriction.push(uid)
@@ -459,7 +461,7 @@
             let xhr = new XMLHttpRequest()
             xhr.withCredentials = true
             xhr.onload = function () {}
-            xhr.open('POST', "/update_restriction")
+            xhr.open('POST', "/restriction")
             xhr.send(JSON.stringify({
                 eventid: this.event.id,
                 restriction: restr
@@ -495,9 +497,9 @@
             xhr.onload = function () {
                 this.get_presence()
             }.bind(this)
-            xhr.open('GET', "/remove_user")
+            xhr.open('DELETE', "/user")
             xhr.send(JSON.stringify({
-                id: event.item.item.id
+                id: event.item.item.username
             }))
         }
 
@@ -517,7 +519,8 @@
         }
 
         pinEvent(event) {
-            if (($ev.target).is(':checked')) {
+            if ((event.target).is(':checked')) {
+                // TODO
             }
         }
 
@@ -525,6 +528,7 @@
             document.querySelectorAll('input[id^="uid_"]').forEach(function (i) {
                 i.checked = true
             })
+            // test
         }
 
         remove_event() {
@@ -533,7 +537,7 @@
             xhr.onload = function () {
                 this.get_events()
             }.bind(this)
-            xhr.open('GET', "/remove_event")
+            xhr.open('DELETE', "/event")
             xhr.send(JSON.stringify({
                 eventid: this.event.id
             }))
@@ -562,7 +566,7 @@
                 document.querySelectorAll('input[id^="uid_"]').forEach(function (i) { i.checked = false })
                 this.get_events()
             }.bind(this)
-            xhr.open('GET', "/create_event")
+            xhr.open('POST', "/event")
             xhr.send(JSON.stringify({
                 title: this.refs.eventname.value,
                 starts: this.refs.date.value + " " + this.refs.time.value,
@@ -582,7 +586,7 @@
                 let payload = JSON.parse(xhr.responseText)
                 this.users = payload.data
                 for (let i=0; i<this.users.length; i++) {
-                    this.usersMap[this.users[i].id] = this.users[i].nickname || this.users[i].username
+                    this.usersMap[this.users[i].username] = this.users[i].fullname || this.users[i].username
                 }
                 this.update()
             }.bind(this)
@@ -616,16 +620,14 @@
                 }
                 this.registered = false
                 for (let i=0; i<this.presence.length; i++) {
-                    if (this.presence[i].userid == this.user.id) {
+                    if (this.presence[i].userid == this.user.username) {
                         this.registered = true
                     }
                 }
                 this.update()
             }.bind(this)
-            xhr.open('GET', "/presence")
-            xhr.send(JSON.stringify({
-                eventid: this.event.id
-            }))
+            xhr.open('GET', "/presence?eventid=" + this.event.id)
+            xhr.send()
         }
 
         add_guest() {
@@ -637,14 +639,15 @@
                 this.refs.guest.value = ""
                 this.update()
             }.bind(this)
-            xhr.open('GET', "/register_guest")
+            xhr.open('POST', "/register")
             xhr.send(JSON.stringify({
+                guest: true,
                 eventid: this.event.id,
                 name: name
             }))
         }
 
-        add_comment(ev) {
+        add_comment() {
             let comment = this.refs.new_comment.value.trim()
             if (!comment.length) {
                 return false
@@ -655,7 +658,7 @@
                 this.refs.new_comment.value = ""
                 this.get_comments()
             }.bind(this)
-            xhr.open('GET', "/add_comment")
+            xhr.open('POST', "/comment")
             xhr.send(JSON.stringify({
                 eventid: this.event.id,
                 comment: encodeURIComponent(comment)
@@ -703,10 +706,8 @@
                 this.comments = payload.data
                 this.update()
             }.bind(this)
-            xhr.open('GET', "/comments")
-            xhr.send(JSON.stringify({
-                eventid: this.event.id
-            }))
+            xhr.open('GET', "/comments?eventid=" + this.event.id)
+            xhr.send()
         }
 
         register() {
@@ -715,7 +716,7 @@
             xhr.onload = function () {
                 this.get_presence()
             }.bind(this)
-            xhr.open('GET', "/register")
+            xhr.open('POST', "/register")
             xhr.send(JSON.stringify({
                 eventid: this.event.id
             }))
@@ -725,18 +726,12 @@
             let xhr = new XMLHttpRequest()
             xhr.withCredentials = true
             xhr.onload = function () {
-                this.get_presence()
+                this.get_presence() // really necessary?
             }.bind(this)
-            xhr.open('GET', "/unregister")
+            xhr.open('DELETE', "/register")
             xhr.send(JSON.stringify({
                 eventid: this.event.id
             }))
         }
-
-        this.on('updated', function () {
-            document.querySelectorAll('input + label').forEach(function (el) {
-                el.classList.add('active')
-            })
-        })
     </script>
 </presence>
