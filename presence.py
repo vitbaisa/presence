@@ -7,63 +7,45 @@ import functools
 import datetime
 import logging
 import argparse
+import subprocess
 
 from wsgiref.simple_server import make_server
 from urllib.parse import parse_qs
-from typing import NamedTuple, Optional, Dict
+from typing import Optional, List, Union, Tuple
 
 
 def admin(method):
     @functools.wraps(method)
     def _impl(self, *method_args, **method_kwargs):
-        if self.username in self.admins:
+        if method_kwargs.get("username", None) in self.admins:
             return method(self, *method_args, **method_kwargs)
         return {"error": "Unauthorized"}
 
     return _impl
 
 
-DEFAULT_LOCK_BEFORE = 36
 HTML_HEADER = ("Content-type", "text/html; charset=utf-8")
 JSON_HEADER = ("Content-type", "application/json; charset=utf-8")
 JS_HEADER = ("Content-type", "text/javascript; charset=utf-8")
 
 
-def utc2local(t):
-    return t
-    # TODO!
-    t1 = datetime.datetime.strptime(t, "%Y-%m-%d %H:%M:%S")
-    HERE = tz.tzlocal()
-    UTC = tz.gettz("UTC")
-    nt = t1.replace(tzinfo=UTC)
-    return nt.astimezone(HERE).strftime("%Y-%m-%d %H:%M:%S")
-
-
-def _late(t, in_advance=DEFAULT_LOCK_BEFORE):
-    t1 = datetime.datetime.strptime(t, "%Y-%m-%d %H:%M:%S")
-    now = datetime.datetime.now()
-    delta = t1 - now
-    return (delta.seconds // 3600 + delta.days * 24) < in_advance
-
-
-def app(environ, start_response, cls=None):
-
+def app(environ, start_response, cls=None) -> List[bytes]:
     http_method = environ["REQUEST_METHOD"].lower()
     try:
-        body_size = int(environ.get("CONTENT_LENGTH", 0))
+        size = int(environ.get("CONTENT_LENGTH", 0))
     except ValueError:
-        body_size = 0
-
+        size = 0
     path = environ["PATH_INFO"].split("/")[1:]
-
     if http_method == "get":
         query = {k: v[0] for k, v in parse_qs(environ["QUERY_STRING"]).items()}
     else:
         query = json.loads(
-            environ["wsgi.input"].read(body_size).decode("utf-8") or "{}"
+            environ["wsgi.input"].read(size).decode("utf-8") or "{}"
         )
-
-    status, headers, response = cls.serve(environ, http_method, path, query)
+    username = environ.get("HTTP_X_REMOTE_USER", None)
+    status, headers, response = cls.serve(
+        environ, http_method, path, {**query, "username": username}
+    )
     start_response(status, headers)
 
     if isinstance(response, dict):
@@ -89,13 +71,14 @@ class Presence:
 
         self.admins = self.config.get("PRESENCE_ADMINS", "").split(",")
         self.coaches = self.config.get("PRESENCE_COACHES", "").split(",")
-        self.local_files = {}
+        self.in_advance = self.config["PRESENCE_IN_ADVANCE"]
+        self.passwd_file = self.config["PRESENCE_PASSWD_FILE"]
+        self.events_file = self.config["PRESENCE_EVENTS_FILE"]
 
     @functools.lru_cache
     def serve_local_file(self, path):
         with open(path) as f:
-            self.local_files[path] = f.read()
-            return self.local_files[path]
+            return f.read()
 
     def _init_db(self):
         conn = sqlite3.connect(config["PRESENCE_DB_PATH"], isolation_level=None)
@@ -104,10 +87,12 @@ class Presence:
         cursor.execute(
             """
             CREATE TABLE users (
-                username    CHAR(30) PRIMARY KEY,
-                fullname    CHAR(30),
-                attr        TEXT,
-            );"""
+                id          INTEGER PRIMARY KEY,
+                username    CHAR(30) NOT NULL UNIQUE,
+                nickname    CHAR(30) UNIQUE,
+                email       CHAR(50) NOT NULL UNIQUE
+            );
+            """
         )
         cursor.execute("DROP TABLE IF EXISTS events;")
         cursor.execute(
@@ -116,22 +101,15 @@ class Presence:
                 id          INTEGER PRIMARY KEY,
                 title       CHAR(50) NOT NULL,
                 starts      DATETIME,
-                ends        DATETIME,
-                location    CHAR(50),
-                attr        TEXT
-            );"""
-        )
-        cursor.execute("DROP TABLE IF EXISTS recurrent_events;")
-        cursor.execute(
+                duration    INTEGER DEFAULT 2,
+                location    CHAR(50) DEFAULT "Zetor",
+                capacity    INTEGER DEFAULT 16,
+                courts      INTEGER DEFAULT 4,
+                restriction CHAR(128),
+                class       CHAR(1),
+                pinned      INTEGER
+            );
             """
-            CREATE TABLE recurrent_events (
-                id          INTEGER PRIMARY KEY,
-                title       CHAR(50) NOT NULL,
-                starts      DATETIME,
-                ends        DATETIME,
-                location    CHAR(50),
-                attr        TEXT
-            );"""
         )
         cursor.execute("DROP TABLE IF EXISTS presence;")
         cursor.execute(
@@ -139,13 +117,14 @@ class Presence:
             CREATE TABLE presence (
                 id          INTEGER PRIMARY KEY,
                 eventid     INTEGER NOT NULL,
-                username    CHAR(30),
-                guestname   CHAR(30),
+                userid      INTEGER DEFAULT -1,
+                name        CHAR(30),
                 datetime    DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (eventid) REFERENCES events(id),
-                FOREIGN KEY (username) REFERENCES users(username),
-                UNIQUE (eventid, guestname) ON CONFLICT REPLACE
-            );"""
+                FOREIGN KEY (userid) REFERENCES users(id),
+                UNIQUE (eventid, name) ON CONFLICT REPLACE
+            );
+            """
         )
         cursor.execute("DROP TABLE IF EXISTS comments;")
         cursor.execute(
@@ -153,28 +132,21 @@ class Presence:
             CREATE TABLE comments (
                 id          INTEGER PRIMARY KEY,
                 eventid     INTEGER NOT NULL,
-                username    CHAR(30),
+                userid      INTEGER NOT NULL,
                 datetime    DATETIME DEFAULT CURRENT_TIMESTAMP,
                 text        TEXT,
-                FOREIGN KEY (username) REFERENCES users(username),
+                FOREIGN KEY (userid)  REFERENCES users(id),
                 FOREIGN KEY (eventid) REFERENCES events(id)
-            );"""
-        )
-        cursor.execute("DROP TABLE IF EXISTS sessions;")
-        cursor.execute(
             """
-            CREATE TABLE sessions (
-                id          TEXT PRIMARY KEY,
-                username    CHAR(30) NOT NULL,
-                FOREIGN KEY (username) REFERENCES users(username)
-            );"""
         )
         conn.commit()
         return conn, cursor
 
-    def serve(self, environ, http_method, path, query):
+    def serve(
+        self, environ: dict, http_method: str, path: List[str], query: dict,
+    ) -> Tuple[str, List[Tuple[str]], Union[dict, str]]:
+
         headers = [JSON_HEADER]
-        username = environ.get("HTTP_X_REMOTE_USER", None)
         if path[0] == "":
             return ("200 OK", [HTML_HEADER], self.serve_local_file("index.html"))
         elif path[0] == "js":
@@ -191,32 +163,59 @@ class Presence:
             status = "404 Not found"
             ret = {}
         else:
-            query["username"] = username
             ret = getattr(self, http_method + "_" + path[0])(**query)
         return (status, headers, ret)
 
     def get_user(self, username: str, **argv) -> dict:
+        q = "SELECT * FROM users WHERE username = ?"
+        row = self.cursor.execute(q, (username, )).fetchone()
         return {
+            **row,
             "username": username,
             "admin": username in self.admins,
             "coach": username in self.coaches,
         }
 
     @admin
-    def post_user(self, **params) -> dict:
-        q = "INSERT INTO users VALUES (?, ?, ?)"
-        self.cursor.execute(q, (username, name, password))
-        self.conn.commit()
-        return {"msg": "User created"}
+    def post_user(
+        self, newusername: str, nickname: str, password: str, **argv
+    ) -> dict:
+        q = "SELECT username FROM users WHERE username = ?"
+        r = self.cursor.execute(q, (newusername,)).fetchone()
+        logging.warning("POST USER CHECK EXISTING: %s", repr(r))
+        if r is None:
+            p = subprocess.Popen(
+                ["htpasswd", "-i", self.passwd_file, newusername],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+            )
+            p.communicate(input=password)
+            if p.returncode == 0:
+                q = "INSERT INTO users (username, nickname) VALUES (?, ?)"
+                self.cursor.execute(q, (newusername, nickname))
+                self.conn.commit()
+                return {'message': "User %s created" % newusername}
+            return {'error': "Failed to add user %s" % newusername}
+        return {'error': "User %s already exists" % newusername}
+
 
     @admin
-    def delete_user(self, username) -> dict:
+    def delete_user(self, delusername: str, **argv) -> dict:
         q = "DELETE * FROM users WHERE username = ?"
-        self.cursor.execute(q, (username,))
-        self.conn.commit()
-        return {"msg": "User deleted"}
+        p = subprocess.Popen(
+            ["htpasswd", "-D", self.passwd_file, delusername],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+        )
+        p.communicate(input=password)
+        if p.returncode == 0:
+            q = "DELETE * FROM users WHERE username = ?"
+            self.cursor.execute(q, (delusername,))
+            self.conn.commit()
+            return {'message': "User %s removed" % delusername}
+        return {"error": "Failed to delete user %s" % delusername}
 
-    def get_events(self, username: str) -> dict:
+    def get_events(self, username: str, **argv) -> dict:
         q = """SELECT * FROM events
                 WHERE (
                     datetime(starts) >= datetime('now', 'localtime', '-2 hours')
@@ -229,232 +228,237 @@ class Presence:
                     pinned = 1
                 )
                 ORDER BY starts ASC"""
-        r = self.cursor.execute(q)
         o = []
-        for row in r.fetchall():
-            restr = row[7].split(",")
-            if restr and self.username not in restr:
+        u = self.get_user(username)
+        logging.warning(u)
+        r = self.cursor.execute(q)
+        for row in r:
+            restr = [int(x) for x in row["restriction"].split(",") if x.strip()]
+            logging.warning(restr)
+            if restr and u["id"] not in restr:
+                logging.warning(
+                    f"User {username} should not see event #{row['id']}"
+                )
                 continue
+            t1 = datetime.datetime.strptime(row["starts"], "%Y-%m-%d %H:%M:%S")
+            now = datetime.datetime.now()
+            delta = t1 - now
             o.append(
                 {
                     **row,
-                    "junior": "JUN" in row["name"],
-                    "locked": "JUN" not in row["name"] and _late(row["starts"]),
-                    "in_advance": DEFAULT_LOCK_BEFORE,
+                    "junior": row["class"] == "J",
+                    "locked": row["class"] == "J" and (
+                        delta.seconds // 3600 + delta.days * 24
+                    ) < self.in_advance,
+                    "in_advance": self.in_advance,
                     "restriction": restr,
                 }
             )
         # TODO: put coaches at the end for junior events
         return {"data": o}
 
-    def get_recurrent_events(self):
-        q = "SELECT * FROM recurrent_events"
-        events = json.load(open(EVENTSFILE))
-        for ev in events["events"]:
-            ev["restriction"] = ev["restriction"].split(",")
-        return {"data": events}
+    def get_recurrent_events(self, **argv) -> dict:
+        with open(self.events_file) as f:
+            events = json.load(f)
+            for ev in events["events"]:
+                ev["restriction"] = ev["restriction"].split(",")
+            return {"data": events}
 
     @admin
-    def put_recurrent_event(self, data=None):
-        if data is None:
-            data = {}
-        return {"message": "Repeating event updated"}
+    def post_recurrent_events(self, data: dict, **argv) -> dict:
+        assert isinstance(data, dict)
+        logging.warning("Changing recurrent events")
+        with open(self.events_file, "w") as f:
+            json.dump(data, f)
+        return data
 
     @admin
-    def post_recurrent_event(self, data=""):
-        # TODO put recurrent_events into DB
-        return {"error": "Something went terrigly wrong..."}
-
-    @admin
-    def put_courts(self, eventid, courts):
-        q = """UPDATE events SET courts = ? WHERE id = ?"""
-        self.cursor.execute(q, (int(courts), int(eventid)))
+    def put_courts(self, eventid: int, courts: int, **argv) -> dict:
+        q = "UPDATE events SET courts = ? WHERE id = ?"
+        self.cursor.execute(q, (courts, eventid))
         self.conn.commit()
-        return {"data": "Event updated"}
+        return {"data": "Update event #%d, courts: %d" % (eventid, courts)}
 
     @admin
-    def put_capacity(self, eventid, capacity):
-        q = """UPDATE events SET capacity = ? WHERE id = ?"""
-        self.cursor.execute(q, (int(capacity), int(eventid)))
+    def put_capacity(self, eventid: int, capacity: int, **argv) -> dict:
+        q = "UPDATE events SET capacity = ? WHERE id = ?"
+        self.cursor.execute(q, (capacity, eventid))
         self.conn.commit()
-        return {"data": "Event updated"}
+        return {"data": "Update event #%d, capacity: %d" % (eventid, capacity)}
 
-    def get_presence(self, eventid=-1):
-        q = """SELECT users.username,
-                    users.fullname,
+    def get_presence(self, eventid: int, **argv) -> dict:
+        q = """SELECT users.username as username,
+                    users.nickname as nickname,
                     presence.username,
-                    presence.name,
-                    presence.datetime,
-                    presence.id,
-                    users.coach
+                    presence.name as name,
+                    presence.datetime as datetime,
+                    presence.id as id,
+                    users.coach as coach
                 FROM presence, users
                 WHERE presence.eventid = ?
                 AND presence.username = users.username
                 ORDER BY presence.datetime"""
-        r = self.cursor.execute(q, (int(eventid),))
-        o = [
-            {
-                "username": row[0],
-                "fullname": row[1],
-                "name": row[3],
-                "datetime": utc2local(row[4]),
-                "coach": bool(row[6]),
-                "id": row[5],
-            }
-            for row in r.fetchall()
-        ]
+        o = self.cursor.execute(q, (eventid,)).fetchall()
         # guests
         q = """SELECT * FROM presence
             WHERE eventid = ?
             AND username IS NULL
             ORDER BY presence.datetime"""
         # TODO: put coaches at the end for junior events
-        r = self.cursor.execute(q, (int(eventid),))
-        for row in r.fetchall():
-            o.append({"name": row[3], "datetime": utc2local(row[4]), "id": row[0]})
+        o.extend(self.cursor.execute(q, (eventid,)).fetchall())
         return {"data": o}
 
-    def delete_presence(self, id):
-        q = """DELETE FROM presence WHERE id = ?"""
-        self.cursor.execute(q, (int(id),))
+    def delete_presence(self, id_: int, **argv) -> dict:
+        q = "DELETE FROM presence WHERE id = ?"
+        self.cursor.execute(q, (id_,))
         self.conn.commit()
-        return {"message": "Presence deleted"}
+        return {"message": "Presence #%d deleted" % id_}
 
-    def post_comment(self, eventid, comment):
+    def post_comment(
+        self, eventid: int, comment: str, username: str, **argv
+    ) -> dict:
         q = "INSERT INTO comments (eventid, username, text) VALUES (?, ?, ?)"
-        self.cursor.execute(q, (int(eventid), self.username, comment))
+        self.cursor.execute(q, (eventid, username, comment))
         self.conn.commit()
-        return {"message": "OK"}
+        return {"message": "Comment by %s successfully added" % username}
 
-    def get_comments(self, eventid):
-        q = """SELECT comments.id,
-                    comments.eventid,
+    def get_comments(self, eventid: int, **argv) -> dict:
+        q = """SELECT comments.id as id,
+                    comments.eventid as eventid,
                     comments.username,
-                    comments.datetime,
-                    comments.text,
+                    comments.datetime as datetime,
+                    comments.text as text,
                     users.username,
-                    users.fullname
+                    users.nickname
                 FROM comments, users
                 WHERE eventid = ?
                 AND users.username = comments.username
                 ORDER BY datetime DESC;"""
-        r = self.cursor.execute(q, (int(eventid),))
-        o = []
-        return {
-            "data": [
-                {
-                    "id": row[0],
-                    "eventid": row[1],
-                    "datetime": row[3],
-                    "text": row[4],
-                    "name": row[6] or row[5],
-                }
-                for row in r.fetchall()
-            ]
-        }
+        r = self.cursor.execute(q, (eventid,))
+        return {"data": r.fetchall()}
 
     @admin
-    def delete_event(self, eventid):
+    def delete_event(self, eventid: int, **argv) -> dict:
         q = "DELETE FROM events WHERE id = ?"
-        self.cursor.execute(q, (int(eventid),))
+        self.cursor.execute(q, (eventid,))
         self.conn.commit()
         q = "DELETE FROM presence WHERE eventid = ?"
-        self.cursor.execute(q, (int(eventid),))
+        self.cursor.execute(q, (eventid,))
         self.conn.commit()
-        return {"message": "Event removed"}
+        return {"message": "Event #%d removed" % eventid}
 
     @admin
-    def post_restriction(self, eventid, restriction):
+    def post_restriction(self, eventid: int, restriction: str, **argv) -> dict:
         q = "UPDATE events SET restriction = ? WHERE id = ?"
-        r = self.cursor.execute(q, (restriction, int(eventid)))
+        r = self.cursor.execute(q, (restriction, eventid))
         self.conn.commit()
-        return {"data": "OK"}
+        return {
+            "data": "Update event #%d, restriction: %s" % (eventid, restriction)
+        }
 
     @admin
     def post_event(
         self,
+        title: str,
         restriction: Optional[str] = "",
-        title: Optional[str] = "",
         starts: Optional[str] = "",
-        ends="",
-        location="Zetor",
-        capacity=0,
-        courts=0,
-        pinned=0,
-    ):
+        duration: Optional[int] = 2,
+        location: Optional[str] = "Zetor",
+        capacity: Optional[str] = 0,
+        courts: Optional[int] = 0,
+        pinned: Optional[int] = 0,
+        junior: Optional[int] = 0,
+        **argv,
+    ) -> dict:
         q = """INSERT INTO events
-            (title, starts, ends, location, capacity, courts, restriction, pinned)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?);"""
+            (title, starts, duration, location, capacity, courts, restriction, pinned, class)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);"""
         self.cursor.execute(
             q,
             (
                 title,
                 starts,
-                ends,
+                duration,
                 location,
-                int(capacity),
-                int(courts),
+                capacity,
+                courts,
                 restriction,
-                int(pinned),
+                pinned,
+                junior and "J" or ""
             ),
         )
         self.conn.commit()
         lastrowid = self.cursor.execute("SELECT last_insert_rowid();").fetchone()[0]
-        return {"data": f"Event ID#{lastrowid} created"}
+        return {"data": f"Event #{lastrowid} created"}
 
     @admin
-    def put_event(self, name="", value=""):
-        q = "UPDATE events SET ? = ?"
-        self.cursor.execute(q, (name, value))
+    def put_event(self, eventid: int, name: str, value: int, **argv) -> dict:
+        q = f"UPDATE events SET {name} = ?"
+        self.cursor.execute(q, (value,))
         self.conn.commit()
-        return {"message": "Event updated"}
+        return {"message": f"Event #{eventid} updated, pinned: {value}"}
 
     @admin
-    def post_guest(self, name, eventid):
-        # TODO: test capacity?
+    def post_guest(self, name: str, eventid: int, **argv) -> dict:
+        # TODO: test capacity
         q = "INSERT INTO presence (eventid, name) VALUES (?, ?)"
-        self.cursor.execute(q, (int(eventid), name))
+        self.cursor.execute(q, (eventid, name))
         self.conn.commit()
-        return {"message": "Guest added"}
+        return {"message": f"Guest {name} added to event #{eventid}"}
 
-    def post_register(self, eventid):
+    def post_register(self, eventid: int, username: str, **argv) -> dict:
         # TODO: check if user is in restriction for the event
         if self._occupancy(eventid) <= 0:
-            return {"error": "Capacity is full"}
-        if self.username in [x["username"] for x in self.presence(eventid)["data"]]:
-            return {"error": "Already registered"}
-        q = """INSERT INTO presence
-            (eventid, username)
-            VALUES (%d, "%s")""" % (
-            int(eventid),
-            self.username,
-        )
-        self.cursor.execute(q)
-        self.conn.commit()
-        return {"data": "Registered"}
+            return {"error": "Capacity is full!"}
 
-    def _occupancy(self, eventid):
+        if username in [
+            x["username"] for x in self.get_presence(eventid)["data"]
+        ]:
+            return {"error": "Already registered"}
+
+        q = "INSERT INTO presence (eventid, username) VALUES (?, ?)"
+        self.cursor.execute(q, (eventid, username))
+        self.conn.commit()
+        return {"data": f"{username} registered for event #{eventid}"}
+
+    def _occupancy(self, eventid: int) -> int:
         q = "SELECT count(*) FROM presence WHERE eventid = ?"
-        r = self.cursor.execute(q, (int(eventid),)).fetchone()[0]
+        r = self.cursor.execute(q, (eventid,)).fetchone()[0]
         q2 = "SELECT capacity FROM events WHERE eventid = ?"
-        r2 = self.cursor.execute(q2, (int(eventid),)).fetchone()[0]
+        r2 = self.cursor.execute(q2, (eventid,)).fetchone()["capacity"]
         return r2 - r
 
-    def delete_register(self, eventid):
-        q = """DELETE FROM presence WHERE username = ? AND eventid = ?"""
-        self.cursor.execute(q, (self.username, int(eventid)))
+    def delete_register(self, eventid: int, username: str, **argv) -> dict:
+        q = "DELETE FROM presence WHERE username = ? AND eventid = ?"
+        self.cursor.execute(q, (username, eventid))
         self.conn.commit()
-        return {"unregistered": self.username}
+        return {"message": f"{username} unregistered from event #{eventid}"}
 
 
 if __name__ == "__main__":
     config = {k: v for k, v in os.environ.items() if k.startswith("PRESENCE_")}
-    assert config.get("PRESENCE_DB_PATH")
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--create", help="Create a new event", action="store_true")
+    parser.add_argument("--db", help="Path to SQLite DB file", required=True)
+    parser.add_argument(
+        "--create", help="Create a new event", action="store_true"
+    )
     parser.add_argument("--port", help="Port", default=8000)
+    parser.add_argument(
+        "--in_advance", help="Lock event X minutes in advance", default=36
+    )
+    parser.add_argument(
+        "--eventsfile", help="JSON file with recurrent events", required=True,
+    )
+    parser.add_argument(
+        "--passwdfile", help="BasicAuth passwd file", required=True,
+    )
     args = parser.parse_args()
+
+    config["PRESENCE_DB_PATH"] = args.db
+    config["PRESENCE_IN_ADVANCE"] = args.in_advance
+    config["PRESENCE_EVENTS_FILE"] = args.eventsfile
+    config["PRESENCE_PASSWD_FILE"] = args.passwdfile
 
     if args.create:
         next_week = datetime.datetime.now() + datetime.timedelta(days=7)

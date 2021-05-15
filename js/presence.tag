@@ -46,7 +46,7 @@
                 <td class={
                     bold: item.userid == user.username,
                     secondary-text: item.coach && event.junior
-                  }>{item.name || item.fullname || item.username}
+                  }>{item.name || item.nickname || item.username}
                   <span if={item.name}>(host)</span>
                   <span if={event.junior && item.coach}>(trenér)</span>
                   <button if={user.admin}
@@ -94,7 +94,7 @@
               <input type="checkbox" id="att_{u.username}"
                   checked={event.restriction.indexOf(u.username) >= 0}
                   onchange={changeRestriction} />
-              <label for="att_{u.username}">{u.fullname || u.username}</label>
+              <label for="att_{u.username}">{u.nickname || u.username}</label>
             </div>
           </div>
         </div>
@@ -148,12 +148,8 @@
               <label>Čas začátku</label>
             </div>
             <div class="col s6 m3 input-field">
-              <input type="text" ref="date_ends" value={new Date().toISOString().slice(0, 10)} />
-              <label>Datum konce</label>
-            </div>
-            <div class="col s6 m3 input-field">
-              <input type="text" ref="time_ends" value="21:00:00" />
-              <label>Čas konce</label>
+              <input type="number" ref="duration" value="2" />
+              <label>Trvání</label>
             </div>
             <div class="col s6 m3 input-field">
               <input type="text" value="Zetor" ref="nlocation" />
@@ -171,6 +167,10 @@
               <input type="checkbox" id="pinned" style="height: 3em;" />
               <label for="pinned" class="active">Připnout</label>
             </div>
+            <div class="col s6 m3 input-field">
+              <input type="checkbox" id="junior" style="height: 3em" />
+              <label for="junior" class="active">junioři</label>
+            </div>
           </div>
           <div class="row">
             <div class="col s12">
@@ -183,7 +183,7 @@
                 <div class="col s6 l3" each={u in users}>
                   <input type="checkbox" name="suser"
                       id={"uid_" + u.username} data-id={u.username} />
-                  <label for={"uid_" + u.username}>{u.fullname || u.username}</label>
+                  <label for={"uid_" + u.username}>{u.nickname || u.username}</label>
                 </div>
               </div>
             </div>
@@ -202,8 +202,7 @@
       <div class="card">
         <div class="card-content">
           <div class="card-title">Opakující se události</div>
-          <p>POZOR: Změny v této tabulce se projeví nejdřív za týden.
-            Juniorské tréninky musí mít v názvu "JUNIOŘI"!</p>
+          <p>POZOR: Změny v této tabulce se projeví nejdřív za týden.</p>
           <ul class="tabs">
             <li each={item, idx in cronevents}
                 onclick={change_ce_tab.bind(this, idx)}>
@@ -238,7 +237,7 @@
               <input type="checkbox" id="ce_{idx}_{u.username}"
                   checked={item.restriction.indexOf(u.username) >= 0}
                   onchange={changeCronEventRestriction.bind(this, idx)} />
-              <label for="ce_{idx}_{u.username}">{u.fullname || u.username}</label>
+              <label for="ce_{idx}_{u.username}">{u.nickname || u.username}</label>
             </div>
           </div>
         </div>
@@ -256,7 +255,7 @@
               <input ref="username" placeholder="Uživatelské jméno" />
             </div>
             <div class="col s12 m6 l3">
-              <input ref="fullname" placeholder="Plné jméno" />
+              <input ref="nickname" placeholder="Plné jméno" />
             </div>
             <div class="col s12 m6 l3">
               <input ref="password" type="password" />
@@ -872,7 +871,7 @@
       xhr.open('POST', "/user")
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.send(JSON.stringify({
-        username: encodeURIComponent(this.refs.username.value),
+        newusername: encodeURIComponent(this.refs.username.value),
         fullname: encodeURIComponent(this.refs.fullname.value),
         password: encodeURIComponent(this.refs.password.value)
       }))
@@ -984,8 +983,8 @@
       }.bind(this)
       xhr.open('GET', "/courts")
       xhr.send(JSON.stringify({
-        eventid: this.event.id,
-        courts: courts
+        eventid: parseInt(this.event.id),
+        courts: parseInt(courts),
       }))
     }
 
@@ -997,7 +996,7 @@
       }.bind(this)
       xhr.open('DELETE', "/user")
       xhr.send(JSON.stringify({
-        username: event.item.item.username
+        delusername: event.item.item.username
       }))
     }
 
@@ -1027,7 +1026,7 @@
         xhr.send(JSON.stringify({
           eventid: this.event.id,
           name: "pinned",
-          value: event.target.checked,
+          value: parseInt(event.target.checked),
         }))
       }
     }
@@ -1036,7 +1035,7 @@
       document.querySelectorAll('input[id^="uid_"]').forEach(function (i) {
         i.checked = true
       })
-      // test
+      // TODO: test
     }
 
     remove_event() {
@@ -1062,6 +1061,7 @@
         users = userarray.join(',')
       }
       let pinned = document.getElementById("pinned").checked
+      let junior = document.getElementById("junior").checked
       let xhr = new XMLHttpRequest()
       xhr.withCredentials = true
       xhr.onload = function () {
@@ -1072,11 +1072,12 @@
       xhr.send(JSON.stringify({
         title: this.refs.eventname.value,
         starts: this.refs.date_starts.value + " " + this.refs.time_starts.value,
-        ends: this.refs.date_ends.value + " " + this.refs.time_ends.value,
+        duration: parseInt(this.refs.duration.value),
         restriction: users,
         location: this.refs.nlocation.value,
-        capacity: this.refs.ncapacity.value,
-        courts: this.refs.ncourts.value,
+        capacity: parseInt(this.refs.ncapacity.value),
+        courts: parseInt(this.refs.ncourts.value),
+        junior: this.refs.junior.value,
         pinned: pinned ? 1 : 0
       }))
     }
@@ -1116,7 +1117,7 @@
       xhr.open('POST', "/guest")
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.send(JSON.stringify({
-        eventid: this.event.id,
+        eventid: parseInt(this.event.id),
         name: name,
       }))
     }
