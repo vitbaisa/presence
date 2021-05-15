@@ -144,7 +144,7 @@ class Presence:
 
     def serve(
         self, environ: dict, http_method: str, path: List[str], query: dict,
-    ) -> Tuple[str, List[Tuple[str]], Union[dict, str]]:
+    ) -> Tuple[str, List[Tuple[str, str]], Union[dict, str]]:
 
         headers = [JSON_HEADER]
         if path[0] == "":
@@ -189,7 +189,7 @@ class Presence:
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
             )
-            p.communicate(input=password)
+            p.communicate(input=password.encode('utf-8'))
             if p.returncode == 0:
                 q = "INSERT INTO users (username, nickname) VALUES (?, ?)"
                 self.cursor.execute(q, (newusername, nickname))
@@ -201,19 +201,11 @@ class Presence:
 
     @admin
     def delete_user(self, delusername: str, **argv) -> dict:
+        p = subprocess.Popen(["htpasswd", "-D", self.passwd_file, delusername])
         q = "DELETE * FROM users WHERE username = ?"
-        p = subprocess.Popen(
-            ["htpasswd", "-D", self.passwd_file, delusername],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-        )
-        p.communicate(input=password)
-        if p.returncode == 0:
-            q = "DELETE * FROM users WHERE username = ?"
-            self.cursor.execute(q, (delusername,))
-            self.conn.commit()
-            return {'message': "User %s removed" % delusername}
-        return {"error": "Failed to delete user %s" % delusername}
+        self.cursor.execute(q, (delusername,))
+        self.conn.commit()
+        return {'message': f"User {delusername} removed"}
 
     def get_events(self, username: str, **argv) -> dict:
         q = """SELECT * FROM events
@@ -364,7 +356,7 @@ class Presence:
         starts: Optional[str] = "",
         duration: Optional[int] = 2,
         location: Optional[str] = "Zetor",
-        capacity: Optional[str] = 0,
+        capacity: Optional[int] = 0,
         courts: Optional[int] = 0,
         pinned: Optional[int] = 0,
         junior: Optional[int] = 0,
