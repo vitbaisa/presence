@@ -39,9 +39,7 @@ def app(environ, start_response, cls=None) -> List[bytes]:
     if http_method == "get":
         query = {k: v[0] for k, v in parse_qs(environ["QUERY_STRING"]).items()}
     else:
-        query = json.loads(
-            environ["wsgi.input"].read(size).decode("utf-8") or "{}"
-        )
+        query = json.loads(environ["wsgi.input"].read(size).decode("utf-8") or "{}")
     username = environ.get("HTTP_X_REMOTE_USER", None)
     status, headers, response = cls.serve(
         environ, http_method, path, {**query, "username": username}
@@ -143,7 +141,7 @@ class Presence:
         return conn, cursor
 
     def serve(
-        self, environ: dict, http_method: str, path: List[str], query: dict,
+        self, environ: dict, http_method: str, path: List[str], query: dict
     ) -> Tuple[str, List[Tuple[str, str]], Union[dict, str]]:
 
         headers = [JSON_HEADER]
@@ -168,7 +166,7 @@ class Presence:
 
     def get_user(self, username: str, **argv) -> dict:
         q = "SELECT * FROM users WHERE username = ?"
-        row = self.cursor.execute(q, (username, )).fetchone()
+        row = self.cursor.execute(q, (username,)).fetchone()
         return {
             **row,
             "username": username,
@@ -177,9 +175,7 @@ class Presence:
         }
 
     @admin
-    def post_user(
-        self, newusername: str, nickname: str, password: str, **argv
-    ) -> dict:
+    def post_user(self, newusername: str, nickname: str, password: str, **argv) -> dict:
         q = "SELECT username FROM users WHERE username = ?"
         r = self.cursor.execute(q, (newusername,)).fetchone()
         logging.warning("POST USER CHECK EXISTING: %s", repr(r))
@@ -189,15 +185,14 @@ class Presence:
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
             )
-            p.communicate(input=password.encode('utf-8'))
+            p.communicate(input=password.encode("utf-8"))
             if p.returncode == 0:
                 q = "INSERT INTO users (username, nickname) VALUES (?, ?)"
                 self.cursor.execute(q, (newusername, nickname))
                 self.conn.commit()
-                return {'message': "User %s created" % newusername}
-            return {'error': "Failed to add user %s" % newusername}
-        return {'error': "User %s already exists" % newusername}
-
+                return {"message": "User %s created" % newusername}
+            return {"error": "Failed to add user %s" % newusername}
+        return {"error": "User %s already exists" % newusername}
 
     @admin
     def delete_user(self, delusername: str, **argv) -> dict:
@@ -205,7 +200,7 @@ class Presence:
         q = "DELETE * FROM users WHERE username = ?"
         self.cursor.execute(q, (delusername,))
         self.conn.commit()
-        return {'message': f"User {delusername} removed"}
+        return {"message": f"User {delusername} removed"}
 
     def get_events(self, username: str, **argv) -> dict:
         q = """SELECT * FROM events
@@ -228,9 +223,7 @@ class Presence:
             restr = [int(x) for x in row["restriction"].split(",") if x.strip()]
             logging.warning(restr)
             if restr and u["id"] not in restr:
-                logging.warning(
-                    f"User {username} should not see event #{row['id']}"
-                )
+                logging.warning(f"User {username} should not see event #{row['id']}")
                 continue
             t1 = datetime.datetime.strptime(row["starts"], "%Y-%m-%d %H:%M:%S")
             now = datetime.datetime.now()
@@ -239,9 +232,8 @@ class Presence:
                 {
                     **row,
                     "junior": row["class"] == "J",
-                    "locked": row["class"] == "J" and (
-                        delta.seconds // 3600 + delta.days * 24
-                    ) < self.in_advance,
+                    "locked": row["class"] == "J"
+                    and (delta.seconds // 3600 + delta.days * 24) < self.in_advance,
                     "in_advance": self.in_advance,
                     "restriction": restr,
                 }
@@ -306,9 +298,7 @@ class Presence:
         self.conn.commit()
         return {"message": "Presence #%d deleted" % id_}
 
-    def post_comment(
-        self, eventid: int, comment: str, username: str, **argv
-    ) -> dict:
+    def post_comment(self, eventid: int, comment: str, username: str, **argv) -> dict:
         q = "INSERT INTO comments (eventid, username, text) VALUES (?, ?, ?)"
         self.cursor.execute(q, (eventid, username, comment))
         self.conn.commit()
@@ -344,9 +334,7 @@ class Presence:
         q = "UPDATE events SET restriction = ? WHERE id = ?"
         r = self.cursor.execute(q, (restriction, eventid))
         self.conn.commit()
-        return {
-            "data": "Update event #%d, restriction: %s" % (eventid, restriction)
-        }
+        return {"data": "Update event #%d, restriction: %s" % (eventid, restriction)}
 
     @admin
     def post_event(
@@ -376,7 +364,7 @@ class Presence:
                 courts,
                 restriction,
                 pinned,
-                junior and "J" or ""
+                junior and "J" or "",
             ),
         )
         self.conn.commit()
@@ -403,9 +391,7 @@ class Presence:
         if self._occupancy(eventid) <= 0:
             return {"error": "Capacity is full!"}
 
-        if username in [
-            x["username"] for x in self.get_presence(eventid)["data"]
-        ]:
+        if username in [x["username"] for x in self.get_presence(eventid)["data"]]:
             return {"error": "Already registered"}
 
         q = "INSERT INTO presence (eventid, username) VALUES (?, ?)"
@@ -432,19 +418,15 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--db", help="Path to SQLite DB file", required=True)
-    parser.add_argument(
-        "--create", help="Create a new event", action="store_true"
-    )
+    parser.add_argument("--create", help="Create a new event", action="store_true")
     parser.add_argument("--port", help="Port", default=8000)
     parser.add_argument(
         "--in_advance", help="Lock event X minutes in advance", default=36
     )
     parser.add_argument(
-        "--eventsfile", help="JSON file with recurrent events", required=True,
+        "--eventsfile", help="JSON file with recurrent events", required=True
     )
-    parser.add_argument(
-        "--passwdfile", help="BasicAuth passwd file", required=True,
-    )
+    parser.add_argument("--passwdfile", help="BasicAuth passwd file", required=True)
     args = parser.parse_args()
 
     config["PRESENCE_DB_PATH"] = args.db
