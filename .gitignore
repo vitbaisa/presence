@@ -1,6 +1,4 @@
-*.db
 *.vim
-.htpasswd
 *.pyc
 inittest.sql
-events.json*
+data

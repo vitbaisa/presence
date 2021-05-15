@@ -38,10 +38,3 @@ CREATE TABLE comments (
     FOREIGN KEY (userid)  REFERENCES users(id),
     FOREIGN KEY (eventid) REFERENCES events(id)
 );
-
-CREATE TABLE sessions (
-    id          INTEGER PRIMARY KEY,
-    sessionid   TEXT,
-    datetime    DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (userid) REFERENCES users(id)
-);
