@@ -217,11 +217,9 @@ class Presence:
                 ORDER BY starts ASC"""
         o = []
         u = self.get_user(username)
-        logging.warning(u)
         r = self.cursor.execute(q)
         for row in r:
             restr = [int(x) for x in row["restriction"].split(",") if x.strip()]
-            logging.warning(restr)
             if restr and u["id"] not in restr:
                 logging.warning(f"User {username} should not see event #{row['id']}")
                 continue
@@ -273,23 +271,27 @@ class Presence:
     def get_presence(self, eventid: int, **argv) -> dict:
         q = """SELECT users.username as username,
                     users.nickname as nickname,
-                    presence.username,
+                    users.id as userid,
                     presence.name as name,
                     presence.datetime as datetime,
-                    presence.id as id,
-                    users.coach as coach
-                FROM presence, users
+                    presence.id as id
+                FROM presence
+                JOIN users ON users.id = presence.userid
                 WHERE presence.eventid = ?
-                AND presence.username = users.username
                 ORDER BY presence.datetime"""
-        o = self.cursor.execute(q, (eventid,)).fetchall()
+        o = []
+        for row in self.cursor.execute(q, (eventid,)):
+            o.append({**row, "coach": row["userid"] in self.coaches})
         # guests
         q = """SELECT * FROM presence
             WHERE eventid = ?
-            AND username IS NULL
+            AND name IS NOT NULL
             ORDER BY presence.datetime"""
         # TODO: put coaches at the end for junior events
-        o.extend(self.cursor.execute(q, (eventid,)).fetchall())
+        o.extend([
+            {**row, "coach": False}
+            for row in self.cursor.execute(q, (eventid,))
+        ])
         return {"data": o}
 
     def delete_presence(self, id_: int, **argv) -> dict:
@@ -298,26 +300,26 @@ class Presence:
         self.conn.commit()
         return {"message": "Presence #%d deleted" % id_}
 
-    def post_comment(self, eventid: int, comment: str, username: str, **argv) -> dict:
-        q = "INSERT INTO comments (eventid, username, text) VALUES (?, ?, ?)"
-        self.cursor.execute(q, (eventid, username, comment))
+    def post_comment(
+        self, eventid: int, comment: str, username: str, **argv
+    ) -> dict:
+        q = "INSERT INTO comments (eventid, userid, text) VALUES (?, ?, ?)"
+        u = self.get_user(username)
+        self.cursor.execute(q, (eventid, u["id"], comment))
         self.conn.commit()
         return {"message": "Comment by %s successfully added" % username}
 
     def get_comments(self, eventid: int, **argv) -> dict:
-        q = """SELECT comments.id as id,
-                    comments.eventid as eventid,
-                    comments.username,
-                    comments.datetime as datetime,
+        q = """SELECT comments.datetime as datetime,
                     comments.text as text,
-                    users.username,
-                    users.nickname
-                FROM comments, users
+                    users.username as username,
+                    users.nickname as nickname
+                FROM comments
+                JOIN users ON users.id = comments.userid
                 WHERE eventid = ?
-                AND users.username = comments.username
                 ORDER BY datetime DESC;"""
         r = self.cursor.execute(q, (eventid,))
-        return {"data": r.fetchall()}
+        return {"data": [dict(row) for row in r]}
 
     @admin
     def delete_event(self, eventid: int, **argv) -> dict:
@@ -391,24 +393,26 @@ class Presence:
         if self._occupancy(eventid) <= 0:
             return {"error": "Capacity is full!"}
 
-        if username in [x["username"] for x in self.get_presence(eventid)["data"]]:
+        u = self.get_user(username)
+        if u["id"] in [x["userid"] for x in self.get_presence(eventid)["data"]]:
             return {"error": "Already registered"}
 
-        q = "INSERT INTO presence (eventid, username) VALUES (?, ?)"
-        self.cursor.execute(q, (eventid, username))
+        q = "INSERT INTO presence (eventid, userid) VALUES (?, ?)"
+        self.cursor.execute(q, (eventid, u["id"]))
         self.conn.commit()
         return {"data": f"{username} registered for event #{eventid}"}
 
     def _occupancy(self, eventid: int) -> int:
         q = "SELECT count(*) FROM presence WHERE eventid = ?"
         r = self.cursor.execute(q, (eventid,)).fetchone()[0]
-        q2 = "SELECT capacity FROM events WHERE eventid = ?"
+        q2 = "SELECT capacity FROM events WHERE id = ?"
         r2 = self.cursor.execute(q2, (eventid,)).fetchone()["capacity"]
         return r2 - r
 
     def delete_register(self, eventid: int, username: str, **argv) -> dict:
-        q = "DELETE FROM presence WHERE username = ? AND eventid = ?"
-        self.cursor.execute(q, (username, eventid))
+        q = "DELETE FROM presence WHERE userid = ? AND eventid = ?"
+        u = self.get_user(username)
+        self.cursor.execute(q, (u["id"], eventid))
         self.conn.commit()
         return {"message": f"{username} unregistered from event #{eventid}"}
 

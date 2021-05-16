@@ -21,21 +21,21 @@
         <div class="card-content">
           <div class="card-title">
             <span>{event.title}
-              <span class="start">{event.start}</span>
+              <span class="starts">{event.starts}</span>
             </span>
-            <button if={is_registered()}
+            <button if={registered}
                 class="secondary-bg float-right"
                 onclick={unregister}>Odhlásit</button>
             <button
                 class="float-right"
-                if={!is_registered() && presence.length < event.capacity && !event.locked}
+                if={!registered && presence.length < event.capacity && !event.locked}
                 onclick={register}>Přihlásit</button>
           </div>
-          <p if={!is_registered() && presence.length >= event.capacity}
+          <p if={!registered && presence.length >= event.capacity}
               class="red-text">
             Termín je již plně obsazen.
           </p>
-          <p if={!is_registered() && event.locked}
+          <p if={!registered && event.locked}
               class="red-text">
             Nelze se přihlašovat méně než {event.in_advance} hodin předem.
           </p>
@@ -106,9 +106,10 @@
           <div class="card-title">Komentáře</div>
           <ul class="comments">
             <li each={c in comments}>
-              <span class="author">{c.name}</span>  
-              <span>{decodeURIComponent(c.text)}</span>
-              <span class="comment-detail">{c.datetime}</span>
+              <p>
+                <b title={c.datetime}>{c.nickname || c.username}</b>:
+                {decodeURIComponent(c.text)}
+              </p>
             </li>
           </ul>
           <form class="text-right">
@@ -119,11 +120,11 @@
       </div>
     </div>
   </div>
-  <div if={user.admin} class="row" style="padding-top: .5em;">
+  <div if={user.admin} style="padding-top: .5em;">
     <ul class="tabs">
-      <li style="width: {100/admin_tabs.length}"
+      <li style="width: {100/admin_tabs.length}%"
           each={tab in admin_tabs}
-          class={selected: admin_tab == tab.id}"
+          class={selected: admin_tab == tab.id}
           onclick={change_admin_tab.bind(this, tab.id)}>
         <span>{tab.label}</span>
       </li>
@@ -133,10 +134,9 @@
     <div class="col s12">
       <div class="card">
         <div class="card-content">
-          <span class="card-title">Nová událost</span>
           <div class="row">
             <div class="col s12 m6 input-field">
-              <input type="text" ref="eventname" />
+              <input type="text" ref="eventname" required placeholder="Název akce" />
               <label>Název akce</label>
             </div>
             <div class="col s6 m3 input-field">
@@ -169,7 +169,7 @@
             </div>
             <div class="col s6 m3 input-field">
               <input type="checkbox" id="junior" style="height: 3em" />
-              <label for="junior" class="active">junioři</label>
+              <label for="junior" class="active">Junioři</label>
             </div>
           </div>
           <div class="row">
@@ -248,19 +248,20 @@
     <div class="col s12">
       <div class="card">
         <div class="card-content">
-          <div class="card-title">Nový hráč</div>
-          <p>Uživatelské jméno smí obsahovat pouze malá písmena, žádnou mezeru.</p>
           <div class="row">
-            <div class="col s12 m6 l3">
-              <input ref="username" placeholder="Uživatelské jméno" />
+            <div class="col s12 m3 input-field">
+              <input type="text" ref="newusername" placeholder="zuzana.ruzickova" />
+              <label>Uživatelské jméno</label>
             </div>
-            <div class="col s12 m6 l3">
-              <input ref="nickname" placeholder="Plné jméno" />
+            <div class="col s12 m3 input-field">
+              <input type="text" ref="nickname" placeholder="Zuzana Růžičková" />
+              <label>Celé jméno</label>
             </div>
-            <div class="col s12 m6 l3">
+            <div class="col s12 m3 input-field">
               <input ref="password" type="password" />
+              <label>Heslo</label>
             </div>
-            <div class="col s12 m6 l3">
+            <div class="col s12 center">
               <button onclick={add_user}>Přidat hráče</button>
             </div>
           </div>
@@ -270,7 +271,6 @@
   </div>
 
   <style>
-    /* FROM MATERIALIZE */
     .btn, button {
         border: none;
         border-radius: 2px;
@@ -613,18 +613,6 @@
       padding: 0;
       list-style-type: none;
     }
-    ul.comments li span.author {
-      font-weight: bold;
-      font-size: 80%;
-    }
-    ul.comments li span.author:after {
-      content: ":";
-      padding-right: .2em;
-    }
-    ul.comments li span.comment-detail {
-      float: right;
-      font-size: 80%;
-    }
     table {
       width: 100%;
       margin-top: 1em;
@@ -768,7 +756,7 @@
         left: 0rem;
       }
     }
-    .start {
+    .starts {
       font-size: 45%;
       font-family: Arial, sans-serif;
       border-radius: 4px;
@@ -798,6 +786,8 @@
       border: 1px solid #D6D6D6;
       border-top: solid 2px #CCC;
       background-color: #EEE;
+      white-space: nowrap;
+      overflow-x: hidden;
     }
     .tabs > li.selected {
       border-bottom: none;
@@ -820,14 +810,6 @@
     .text-right {
       text-align: right;
     }
-    .text-center {
-      text-align: center;
-    }
-    .bold {
-      font-weight: bold;
-    }
-    /* tetrad: 9c18f9 pink f99c18 orange 76f918 green */
-    /* triad: f91876 ~cyan */
   </style>
 
   <script>
@@ -846,6 +828,7 @@
         {id: "new_user", label: "Nový hráč"},
     ]
     this.ce_tab = 0
+    this.registered = false
 
     change_admin_tab(tab) {
       this.admin_tab = tab
@@ -856,8 +839,12 @@
     }
 
     is_registered() {
-      // TODO!
-      return true
+      for (let i=0; i<this.presence.length; i++) {
+          if (this.presence[i].userid >= 0 && this.user.id == this.presence[i].userid) {
+              return true
+        }
+      }
+      return false
     }
 
     add_user() {
@@ -871,8 +858,8 @@
       xhr.open('POST', "/user")
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.send(JSON.stringify({
-        newusername: encodeURIComponent(this.refs.username.value),
-        fullname: encodeURIComponent(this.refs.fullname.value),
+        newusername: encodeURIComponent(this.refs.newusername.value),
+        nickname: encodeURIComponent(this.refs.nickname.value),
         password: encodeURIComponent(this.refs.password.value)
       }))
     }
@@ -1065,6 +1052,9 @@
       let xhr = new XMLHttpRequest()
       xhr.withCredentials = true
       xhr.onload = function () {
+        // reset form
+        this.refs.eventname.value = ""
+        this.refs.date_starts.value = ""
         this.get_events()
       }.bind(this)
       xhr.open('POST', "/event")
@@ -1077,8 +1067,8 @@
         location: this.refs.nlocation.value,
         capacity: parseInt(this.refs.ncapacity.value),
         courts: parseInt(this.refs.ncourts.value),
-        junior: this.refs.junior.value,
-        pinned: pinned ? 1 : 0
+        junior: junior ? 1 : 0,
+        pinned: pinned ? 1 : 0,
       }))
     }
 
@@ -1099,6 +1089,7 @@
       xhr.onload = function () {
         let d = JSON.parse(xhr.responseText)
         this.presence = d.data
+        this.registered = this.is_registered()
         this.update()
       }.bind(this)
       xhr.open('GET', "/presence?eventid=" + this.event.id)
@@ -1136,7 +1127,7 @@
       xhr.open('POST', "/comment")
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.send(JSON.stringify({
-        eventid: this.event.id,
+        eventid: parseInt(this.event.id),
         comment: encodeURIComponent(comment)
       }))
     }
@@ -1203,10 +1194,7 @@
       let xhr = new XMLHttpRequest()
       xhr.withCredentials = true
       xhr.onload = function () {
-        let d = JSON.parse(xhr.responseText)
-        if (d.unregistered) {
-            // remove unregistered
-        }
+        this.get_presence()
       }.bind(this)
       xhr.open('DELETE', "/register")
       xhr.send(JSON.stringify({
