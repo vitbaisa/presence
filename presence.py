@@ -2,6 +2,7 @@
 
 import os
 import json
+import shutil
 import sqlite3
 import functools
 import datetime
@@ -164,9 +165,22 @@ class Presence:
             ret = getattr(self, http_method + "_" + path[0])(**query)
         return (status, headers, ret)
 
+    @admin
+    def get_users(self, **argv) -> dict:
+        q = "SELECT * FROM users ORDER BY nickname, username, id"
+        return {"data": [dict(row) for row in self.cursor.execute(q)]}
+
     def get_user(self, username: str, **argv) -> dict:
         q = "SELECT * FROM users WHERE username = ?"
         row = self.cursor.execute(q, (username,)).fetchone()
+        if row is None:
+            logging.warning("Failed get_user %s from DB", username)
+            return {
+                "username": username,
+                "admin": False,
+                "coach": False,
+                "warning": "Garbled username?",
+            }
         return {
             **row,
             "username": username,
@@ -178,7 +192,6 @@ class Presence:
     def post_user(self, newusername: str, nickname: str, password: str, **argv) -> dict:
         q = "SELECT username FROM users WHERE username = ?"
         r = self.cursor.execute(q, (newusername,)).fetchone()
-        logging.warning("POST USER CHECK EXISTING: %s", repr(r))
         if r is None:
             p = subprocess.Popen(
                 ["htpasswd", "-i", self.passwd_file, newusername],
@@ -187,8 +200,10 @@ class Presence:
             )
             p.communicate(input=password.encode("utf-8"))
             if p.returncode == 0:
-                q = "INSERT INTO users (username, nickname) VALUES (?, ?)"
-                self.cursor.execute(q, (newusername, nickname))
+                q = "INSERT INTO users (username, nickname, email) VALUES (?, ?, ?)"
+                self.cursor.execute(
+                    q, (newusername, nickname, f"{newusername}@mail.cz")
+                )
                 self.conn.commit()
                 return {"message": "User %s created" % newusername}
             return {"error": "Failed to add user %s" % newusername}
@@ -221,7 +236,6 @@ class Presence:
         for row in r:
             restr = [int(x) for x in row["restriction"].split(",") if x.strip()]
             if restr and u["id"] not in restr:
-                logging.warning(f"User {username} should not see event #{row['id']}")
                 continue
             t1 = datetime.datetime.strptime(row["starts"], "%Y-%m-%d %H:%M:%S")
             now = datetime.datetime.now()
@@ -249,24 +263,28 @@ class Presence:
     @admin
     def post_recurrent_events(self, data: dict, **argv) -> dict:
         assert isinstance(data, dict)
-        logging.warning("Changing recurrent events")
+        copy_fn = self.events_file.replace(
+            ".json", "_" + datetime.datetime.now().strftime("%Y%m%d%H%M%S") + ".json"
+        )
+        shutil.copyfile(self.events_file, copy_fn)
+        logging.warning(f"Events file backuped to {copy_fn}")
         with open(self.events_file, "w") as f:
-            json.dump(data, f)
-        return data
+            json.dump(data, f, indent=4, ensure_ascii=False)
+        return {"message": "Recurrent events changed"}
 
     @admin
     def put_courts(self, eventid: int, courts: int, **argv) -> dict:
         q = "UPDATE events SET courts = ? WHERE id = ?"
         self.cursor.execute(q, (courts, eventid))
         self.conn.commit()
-        return {"data": "Update event #%d, courts: %d" % (eventid, courts)}
+        return {"data": f"Update event #{eventid}, courts: {courts}"}
 
     @admin
     def put_capacity(self, eventid: int, capacity: int, **argv) -> dict:
         q = "UPDATE events SET capacity = ? WHERE id = ?"
         self.cursor.execute(q, (capacity, eventid))
         self.conn.commit()
-        return {"data": "Update event #%d, capacity: %d" % (eventid, capacity)}
+        return {"data": f"Update event #{eventid}, capacity: {capacity}"}
 
     def get_presence(self, eventid: int, **argv) -> dict:
         q = """SELECT users.username as username,
@@ -288,10 +306,9 @@ class Presence:
             AND name IS NOT NULL
             ORDER BY presence.datetime"""
         # TODO: put coaches at the end for junior events
-        o.extend([
-            {**row, "coach": False}
-            for row in self.cursor.execute(q, (eventid,))
-        ])
+        o.extend(
+            [{**row, "coach": False} for row in self.cursor.execute(q, (eventid,))]
+        )
         return {"data": o}
 
     def delete_presence(self, id_: int, **argv) -> dict:
@@ -300,9 +317,7 @@ class Presence:
         self.conn.commit()
         return {"message": "Presence #%d deleted" % id_}
 
-    def post_comment(
-        self, eventid: int, comment: str, username: str, **argv
-    ) -> dict:
+    def post_comment(self, eventid: int, comment: str, username: str, **argv) -> dict:
         q = "INSERT INTO comments (eventid, userid, text) VALUES (?, ?, ?)"
         u = self.get_user(username)
         self.cursor.execute(q, (eventid, u["id"], comment))
@@ -409,12 +424,15 @@ class Presence:
         r2 = self.cursor.execute(q2, (eventid,)).fetchone()["capacity"]
         return r2 - r
 
-    def delete_register(self, eventid: int, username: str, **argv) -> dict:
-        q = "DELETE FROM presence WHERE userid = ? AND eventid = ?"
-        u = self.get_user(username)
-        self.cursor.execute(q, (u["id"], eventid))
+    def delete_register(self, eventid: int, userid: int, name: str, **argv) -> dict:
+        if userid > -1:
+            q = "DELETE FROM presence WHERE userid = ? AND eventid = ?"
+            self.cursor.execute(q, (userid, eventid))
+        else:
+            q = "DELETE FROM presence WHERE name = ? AND eventid = ?"
+            self.cursor.execute(q, (name, eventid))
         self.conn.commit()
-        return {"message": f"{username} unregistered from event #{eventid}"}
+        return {"message": f"User #{userid} {name} unregistered from event #{eventid}"}
 
 
 if __name__ == "__main__":
