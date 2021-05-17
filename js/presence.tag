@@ -51,6 +51,7 @@
                   <span if={item.name}>(host)</span>
                   <span if={event.junior && item.coach}>(trenér)</span>
                   <button if={user.admin}
+                      style="height: 1.2em; line-height: 1.2em"
                       onclick={delete_presence.bind(this, item.id, item.name, event.id)}
                       class="red-text flat">✕</button>
                 </td>
@@ -620,9 +621,9 @@
     table.striped > tbody > tr:nth-child(2n+1) {
       background-color: #f2f2f2;
     }
-    table.striped th,
-    table.striped td {
-      padding: .1em .5em;
+    th,
+    td {
+      padding: .5em;
     }
     .secondary-bg {
       background-color: crimson;
