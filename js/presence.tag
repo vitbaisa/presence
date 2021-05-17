@@ -15,14 +15,13 @@
       </li>
     </ul>
   </div>
-  <div class="row tab" if={events.length}>
+  <div class="row tab" if={events.length}
+      style="border: solid 1px #D6D6D6; border-width: 0 1px 1px 1px;">
     <div class="col s12 l6">
       <div class="card">
         <div class="card-content">
           <div class="card-title">
-            <span>{event.title}
-              <span class="starts">{event.starts}</span>
-            </span>
+            <span>{event.starts.slice(0, -3)}</span>
             <button if={registered}
                 class="secondary-bg float-right"
                 onclick={unregister}>Odhlásit</button>
@@ -42,8 +41,10 @@
           <table class="striped">
             <tbody>
               <tr each={item, i in presence}>
-                <td>{i+1}</td>
-                <td class={
+                <td class="grey-text">{i+1}</td>
+                <td 
+                  title={item.datetime}
+                  class={
                     bold: item.userid == user.username,
                     secondary-text: item.coach && event.junior
                   }>{item.name || item.nickname || item.username}
@@ -53,14 +54,12 @@
                       onclick={delete_presence.bind(this, item.id, item.name, event.id)}
                       class="red-text flat">✕</button>
                 </td>
-                <td class="text-right nowrap">{item.datetime}</td>
               </tr>
               <tr if={user.admin}>
-                <td>{presence.length + 1}</td>
+                <td class="grey-text">{presence.length + 1}</td>
                 <td>
                   <input type="text" placeholder="Lee Chong Wei" ref="guest" />
-                </td>
-                <td class="text-right">
+                  <br />
                   <button onclick={add_guest}>Přidat hosta</button>
                 </td>
               </tr>
@@ -621,9 +620,9 @@
     table.striped > tbody > tr:nth-child(2n+1) {
       background-color: #f2f2f2;
     }
-    th,
-    td {
-      padding: .5em;
+    table.striped th,
+    table.striped td {
+      padding: .1em .5em;
     }
     .secondary-bg {
       background-color: crimson;
@@ -756,16 +755,10 @@
       }
     }
     .red-text {
-        color: red;
+      color: red;
     }
-    .starts {
-      font-size: 45%;
-      font-family: Arial, sans-serif;
-      border-radius: 4px;
-      padding: 2px 3px;
-      background-color: #1975FA;
-      color: white;
-      font-weight: bold;
+    .grey-text {
+      color: #AAA;
     }
     .tabs {
       position: relative;
