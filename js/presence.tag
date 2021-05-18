@@ -15,8 +15,7 @@
       </li>
     </ul>
   </div>
-  <div class="row tab" if={events.length}
-      style="border: solid 1px #D6D6D6; border-width: 0 1px 1px 1px;">
+  <div class="row tab" if={events.length}>
     <div class="col s12 l6">
       <div class="card">
         <div class="card-content">
@@ -24,7 +23,7 @@
             <span>{event.starts.slice(0, -3)}</span>
             <button if={registered}
                 class="secondary-bg float-right"
-                onclick={unregister}>Odhlásit</button>
+                onclick={delete_presence.bind(this, this.user.id, "", event.id)}>Odhlásit</button>
             <button
                 class="float-right"
                 if={!registered && presence.length < event.capacity && !event.locked}
@@ -52,7 +51,7 @@
                   <span if={event.junior && item.coach}>(trenér)</span>
                   <button if={user.admin}
                       style="height: 1.2em; line-height: 1.2em"
-                      onclick={delete_presence.bind(this, item.id, item.name, event.id)}
+                      onclick={delete_presence.bind(this, item.userid, item.name, event.id)}
                       class="red-text flat">✕</button>
                 </td>
               </tr>
@@ -1198,18 +1197,6 @@
       }.bind(this)
       xhr.open('POST', "/register")
       xhr.setRequestHeader('Content-Type', 'application/json');
-      xhr.send(JSON.stringify({
-        eventid: this.event.id
-      }))
-    }
-
-    unregister() {
-      let xhr = new XMLHttpRequest()
-      xhr.withCredentials = true
-      xhr.onload = function () {
-        this.get_presence()
-      }.bind(this)
-      xhr.open('DELETE', "/register")
       xhr.send(JSON.stringify({
         eventid: this.event.id
       }))

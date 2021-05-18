@@ -180,6 +180,7 @@ class Presence:
                 "admin": False,
                 "coach": False,
                 "warning": "Garbled username?",
+                "id": -1,
             }
         return {
             **row,
@@ -310,12 +311,6 @@ class Presence:
             [{**row, "coach": False} for row in self.cursor.execute(q, (eventid,))]
         )
         return {"data": o}
-
-    def delete_presence(self, id_: int, **argv) -> dict:
-        q = "DELETE FROM presence WHERE id = ?"
-        self.cursor.execute(q, (id_,))
-        self.conn.commit()
-        return {"message": "Presence #%d deleted" % id_}
 
     def post_comment(self, eventid: int, comment: str, username: str, **argv) -> dict:
         q = "INSERT INTO comments (eventid, userid, text) VALUES (?, ?, ?)"
