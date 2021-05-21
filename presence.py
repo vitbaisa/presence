@@ -59,7 +59,7 @@ class Presence:
     def __init__(self, config):
         self.config = config
         if not os.path.exists(config["PRESENCE_DB_PATH"]):
-            logging.warning("Initializing {config['PRESENCE_DB_PATH']}")
+            logging.warning(f"Initializing {config['PRESENCE_DB_PATH']}")
             self.conn, self.cursor = self._init_db()
         else:
             self.conn = sqlite3.connect(
@@ -71,8 +71,8 @@ class Presence:
         self.admins = self.config.get("PRESENCE_ADMINS", "").split(",")
         self.coaches = self.config.get("PRESENCE_COACHES", "").split(",")
         self.in_advance = self.config["PRESENCE_IN_ADVANCE"]
-        self.passwd_file = self.config["PRESENCE_PASSWD_FILE"]
-        self.events_file = self.config["PRESENCE_EVENTS_FILE"]
+        self.passwd_file = self.config.get("PRESENCE_PASSWD_FILE", None)
+        self.events_file = self.config.get("PRESENCE_EVENTS_FILE", None)
 
     @functools.lru_cache
     def serve_local_file(self, path):
@@ -193,6 +193,9 @@ class Presence:
     def post_user(self, newusername: str, nickname: str, password: str, **argv) -> dict:
         q = "SELECT username FROM users WHERE username = ?"
         r = self.cursor.execute(q, (newusername,)).fetchone()
+        if self.passwd_file is None:
+            logging.warning(f"Passwd file not defined")
+            return {"error": "Runtime error"}
         if r is None:
             p = subprocess.Popen(
                 ["htpasswd", "-i", self.passwd_file, newusername],
@@ -212,6 +215,9 @@ class Presence:
 
     @admin
     def delete_user(self, delusername: str, **argv) -> dict:
+        if self.passwd_file is None:
+            logging.warning(f"Passwd file not defined")
+            return {"error": "Runtime error"}
         p = subprocess.Popen(["htpasswd", "-D", self.passwd_file, delusername])
         q = "DELETE * FROM users WHERE username = ?"
         self.cursor.execute(q, (delusername,))
@@ -255,6 +261,9 @@ class Presence:
         return {"data": o}
 
     def get_recurrent_events(self, **argv) -> dict:
+        if self.events_file is None:
+            logging.warning("Recurrent event file not defined")
+            return {"error": "Runtime error"}
         with open(self.events_file) as f:
             events = json.load(f)
             for ev in events["events"]:
@@ -264,6 +273,9 @@ class Presence:
     @admin
     def post_recurrent_events(self, data: dict, **argv) -> dict:
         assert isinstance(data, dict)
+        if self.events_file is None:
+            logging.warning("Recurrent event file not defined")
+            return {"error": "Runtime error"}
         copy_fn = self.events_file.replace(
             ".json", "_" + datetime.datetime.now().strftime("%Y%m%d%H%M%S") + ".json"
         )
@@ -354,7 +366,7 @@ class Presence:
         title: str,
         restriction: Optional[str] = "",
         starts: Optional[str] = "",
-        duration: Optional[int] = 2,
+        duration: Optional[float] = 2.0,
         location: Optional[str] = "Zetor",
         capacity: Optional[int] = 0,
         courts: Optional[int] = 0,
@@ -435,7 +447,13 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--db", help="Path to SQLite DB file", required=True)
+
     parser.add_argument("--create", help="Create a new event", action="store_true")
+    parser.add_argument("--date", help="Create a new event at date")
+    parser.add_argument(
+        "--take", help="Create a new <take>th recurrent event", type=int
+    )
+
     parser.add_argument("--port", help="Port", default=8000)
     parser.add_argument(
         "--in_advance", help="Lock event X minutes in advance", default=36
@@ -443,27 +461,41 @@ if __name__ == "__main__":
     parser.add_argument(
         "--eventsfile", help="JSON file with recurrent events", required=True
     )
-    parser.add_argument("--passwdfile", help="BasicAuth passwd file", required=True)
+    parser.add_argument("--passwdfile", help="BasicAuth passwd file")
     args = parser.parse_args()
 
+    # TODO: get rid of config
     config["PRESENCE_DB_PATH"] = args.db
     config["PRESENCE_IN_ADVANCE"] = args.in_advance
     config["PRESENCE_EVENTS_FILE"] = args.eventsfile
-    config["PRESENCE_PASSWD_FILE"] = args.passwdfile
 
     if args.create:
-        next_week = datetime.datetime.now() + datetime.timedelta(days=7)
-        day = datetime.datetime.today().weekday()
-        try:
-            presence = Presence(config)
-            for e in presence.get_recurrent_events()["data"]:
-                if not day == e["day"]:
-                    continue
-                e["starts"] = next_week.strftime(e["starts"])
+        presence = Presence(config)
+        if args.date and args.take > -1:
+            events = presence.get_recurrent_events()["data"]["events"]
+            if args.take < len(events):
+                e = events[args.take]
+                e["starts"] = e["starts"].replace("%Y-%m-%d", args.date)
+                e["restriction"] = ",".join(e["restriction"])
+                logging.warning("Creating event on %s", e["starts"])
+                e["username"] = "vit.baisa"
                 presence.post_event(**e)
-        except Exception as msg:
-            logging.error("Failed to create event %s", str(msg))
+        else:
+            next_week = datetime.datetime.now() + datetime.timedelta(days=7)
+            day = datetime.datetime.today().weekday()
+            try:
+                for e in presence.get_recurrent_events()["data"]["events"]:
+                    if not day == e["day"]:
+                        continue
+                    e["starts"] = next_week.strftime(e["starts"])
+                    e["restriction"] = ",".join(e["restriction"])
+                    logging.warning("Creating recurrent event on %s", e["starts"])
+                    e["username"] = "vit.baisa"
+                    presence.post_event(**e)
+            except Exception as msg:
+                logging.error("Failed to create event %s", str(msg))
     else:
+        config["PRESENCE_PASSWD_FILE"] = args.passwdfile
         presence = Presence(config)
         with make_server("", args.port, functools.partial(app, cls=presence)) as httpd:
             httpd.serve_forever()
