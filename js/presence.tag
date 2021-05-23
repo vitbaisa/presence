@@ -117,7 +117,7 @@
           </div>
           <div class="col s6" each={u in users} style="white-space: nowrap;">
             <input type="checkbox" id="att_{u.id}"
-                checked={event.restriction.indexOf(u.id) >= 0}
+                checked={event && event.restriction && event.restriction.indexOf(u.id) >= 0}
                 onchange={changeRestriction} />
             <label for="att_{u.id}">{u.nickname || u.username}</label>
           </div>
@@ -246,7 +246,7 @@
             <div class="col s6 m4 l3" each={u in users} style="white-space: nowrap;">
               <input type="checkbox" id="ce_{idx}_{u.id}"
                   checked={item.restriction.indexOf(u.id.toString()) >= 0}
-                  onchange={changeCronEventRestriction.bind(this, idx)} />
+                  onchange={changeCronEventRestriction} />
               <label for="ce_{idx}_{u.id}">{decodeURIComponent(u.nickname || u.username)}</label>
             </div>
           </div>
@@ -820,6 +820,7 @@
   </style>
 
   <script>
+    this.event = null
     this.events = []
     this.comments = []
     this.presence = []
@@ -875,9 +876,9 @@
     }
 
     changeCE(e) {
-      this.recurrent_events[e.item.idx][e.target.name] = e.target.value
+      this.recurrent_events[this.ce_tab][e.target.name] = e.target.value
       if (e.target.name == "day") {
-        this.recurrent_events[e.item.idx][e.target.name] = parseInt(e.target.value)
+        this.recurrent_events[this.ce_tab][e.target.name] = parseInt(e.target.value)
       }
       this.set_recurrent_events()
     }
@@ -924,8 +925,9 @@
       xhr.send(JSON.stringify({data: {events: this.recurrent_events}}))
     }
 
-    changeCronEventRestriction(idx, ev) {
+    changeCronEventRestriction(ev) {
       let uid = ev.item.u.id.toString()
+      let idx = this.ce_tab
       if (ev.currentTarget.checked) {
         if (this.recurrent_events[idx].restriction.indexOf(uid) == -1) {
           this.recurrent_events[idx].restriction.push(uid)
@@ -934,7 +936,9 @@
       }
       else {
         let ind = this.recurrent_events[idx].restriction.indexOf(uid)
-        this.recurrent_events[idx].restriction.splice(ind, 1)
+        if (ind != -1) {
+          this.recurrent_events[idx].restriction.splice(ind, 1)
+        }
       }
       this.set_recurrent_events()
     }
