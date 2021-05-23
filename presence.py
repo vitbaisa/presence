@@ -254,8 +254,7 @@ class Presence:
                 {
                     **row,
                     "junior": row["class"] == "J",
-                    "locked": row["class"] == "J"
-                    and (delta.seconds // 3600 + delta.days * 24) < self.in_advance,
+                    "locked": (delta.seconds // 3600 + delta.days * 24) < self.in_advance,
                     "in_advance": self.in_advance,
                     "restriction": restr,
                 }
