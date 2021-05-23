@@ -166,12 +166,10 @@ class Presence:
         return (status, headers, ret)
 
     @admin
-    @functools.lru_cache
     def get_users(self, **argv) -> dict:
         q = "SELECT * FROM users ORDER BY nickname, username, id"
         return {"data": [dict(row) for row in self.cursor.execute(q)]}
 
-    @functools.lru_cache
     def get_user(self, username: str, **argv) -> dict:
         q = "SELECT * FROM users WHERE username = ?"
         row = self.cursor.execute(q, (username,)).fetchone()
@@ -211,7 +209,6 @@ class Presence:
                     q, (newusername, nickname, f"{newusername}@mail.cz")
                 )
                 self.conn.commit()
-                self.get_users.cache_clear()
                 return {"message": "User %s created" % newusername}
             return {"error": "Failed to add user %s" % newusername}
         return {"error": "User %s already exists" % newusername}
@@ -301,7 +298,6 @@ class Presence:
         self.conn.commit()
         return {"data": f"Update event #{eventid}, capacity: {capacity}"}
 
-    @functools.lru_cache(maxsize=10)
     def get_presence(self, eventid: int, **argv) -> dict:
         q = """SELECT users.username as username,
                     users.nickname as nickname,
@@ -332,10 +328,8 @@ class Presence:
         u = self.get_user(username)
         self.cursor.execute(q, (eventid, u["id"], comment))
         self.conn.commit()
-        self.get_comments.cache_clear()
         return {"message": "Comment by %s successfully added" % username}
 
-    @functools.lru_cache(maxsize=10)
     def get_comments(self, eventid: int, **argv) -> dict:
         q = """SELECT comments.datetime as datetime,
                     comments.text as text,
@@ -427,7 +421,6 @@ class Presence:
         q = "INSERT INTO presence (eventid, userid) VALUES (?, ?)"
         self.cursor.execute(q, (eventid, u["id"]))
         self.conn.commit()
-        self.get_presence.cache_clear()
         return {"data": f"{username} registered for event #{eventid}"}
 
     def _occupancy(self, eventid: int) -> int:
