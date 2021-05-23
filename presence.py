@@ -265,8 +265,6 @@ class Presence:
             return {"error": "Runtime error"}
         with open(self.events_file) as f:
             events = json.load(f)
-            for ev in events["events"]:
-                ev["restriction"] = ev["restriction"].split(",")
             return {"data": events}
 
     @admin
@@ -282,7 +280,7 @@ class Presence:
         logging.warning(f"Events file backuped to {copy_fn}")
         with open(self.events_file, "w") as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
-        return {"message": "Recurrent events changed"}
+        return {"data": data}
 
     @admin
     def put_courts(self, eventid: int, courts: int, **argv) -> dict:

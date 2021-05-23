@@ -85,15 +85,6 @@
               <span if={!user.admin}>{event.courts}</span>
             </div>
           </div>
-          <div class="row" if={user.admin && show_users}>
-            <h5>Kdo vidí a může se přihlásit na tento termín</h5>
-            <div class="col s6" each={u in users} style="white-space: nowrap;">
-              <input type="checkbox" id="att_{u.id}"
-                  checked={event.restriction.indexOf(u.id) >= 0}
-                  onchange={changeRestriction} />
-              <label for="att_{u.id}">{u.nickname || u.username}</label>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -113,6 +104,23 @@
             <textarea onchange={changed_area} ref="new_comment"></textarea>
             <button onclick={add_comment}>Přidat komentář</button>
           </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="row" if={user.admin}>
+    <div class="col s12">
+      <div class="card">
+        <div class="card-content">
+          <div class="card-title">
+            Kdo vidí a může se přihlásit na zobrazený termín
+          </div>
+          <div class="col s6" each={u in users} style="white-space: nowrap;">
+            <input type="checkbox" id="att_{u.id}"
+                checked={event.restriction.indexOf(u.id) >= 0}
+                onchange={changeRestriction} />
+            <label for="att_{u.id}">{u.nickname || u.username}</label>
+          </div>
         </div>
       </div>
     </div>
@@ -200,7 +208,8 @@
           <div class="row">
             <div class="col s12">
               <select onchange={change_ce_tab}>
-                <option each={item in recurrent_events}>{item.title}</option>
+                <option each={item, idx in recurrent_events}
+                  value={idx} selected={ce_tab == idx}>{item.title}</option>
               </select>
             </div>
           </div>
@@ -224,13 +233,16 @@
               <input name="duration" type="number" min="1" max="12" value={item.duration} onchange={changeCE} />
             </div>
             <div class="col s4 m2 input-field">
-              <input name="capacity" type="number" min="1" max="50" value={item.capacity} onchange={changeCE} />
+              <input name="capacity" type="number" min="1" max="50"
+                  value={item.capacity} onchange={changeCE} />
             </div>
             <div class="col s4 m2 input-field">
-              <input name="courts" type="number" min="1" max="6" value={item.courts} onchange={changeCE} /></td>
+              <input name="courts" type="number" min="1" max="6"
+                  value={item.courts} onchange={changeCE} /></td>
             </div>
           </div>
-          <div class="row tab" each={item, idx in recurrent_events} if={ce_tab == idx}>
+          <div class="row tab" each={item, idx in recurrent_events}
+              if={ce_tab == idx}>
             <div class="col s6 m4 l3" each={u in users} style="white-space: nowrap;">
               <input type="checkbox" id="ce_{idx}_{u.id}"
                   checked={item.restriction.indexOf(u.id.toString()) >= 0}
@@ -539,6 +551,7 @@
       .card .card-content {
         padding: 24px;
         border-radius: 0 0 2px 2px;
+        overflow: auto;
       }
       label {
         font-size: 0.8rem;
@@ -812,7 +825,6 @@
     this.presence = []
     this.user = {}
     this.users = []
-    this.show_users = false
     this.recurrent_events = []
     this.days = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek", "Sobota", "Neděle", "Neopakuje se"]
     this.admin_tab = "new_event"
@@ -898,14 +910,12 @@
     }
 
     set_recurrent_events() {
-      for (let i=0; i<this.recurrent_events.length; i++) {
-        this.recurrent_events[i].restriction = this.recurrent_events[i].restriction.join(',')
-      }
       let xhr = new XMLHttpRequest()
       xhr.withCredentials = true
       xhr.onload = function () {
         if (xhr.status === 200) {
-          this.get_recurrent_events()
+          let payload = JSON.parse(xhr.responseText)
+          this.reccurent_events = payload.data.events
           this.update()
         }
       }.bind(this)
@@ -924,15 +934,13 @@
       }
       else {
         let ind = this.recurrent_events[idx].restriction.indexOf(uid)
-        if (ind != -1) {
-          this.recurrent_events[idx].restriction.splice(ind, 1)
-        }
+        this.recurrent_events[idx].restriction.splice(ind, 1)
       }
       this.set_recurrent_events()
     }
 
     changeRestriction(ev) {
-      let uid = ev.item.u.id.toString()
+      let uid = ev.item.u.id
       if (ev.currentTarget.checked) {
         if (this.event.restriction.indexOf(uid) == -1) {
           this.event.restriction.push(uid)
@@ -945,7 +953,6 @@
           this.event.restriction.splice(ind, 1)
         }
       }
-      let restr = this.event.restriction.join(",")
       let xhr = new XMLHttpRequest()
       xhr.withCredentials = true
       xhr.onload = function () {}
@@ -953,7 +960,7 @@
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.send(JSON.stringify({
         eventid: this.event.id,
-        restriction: restr
+        restriction: this.event.restriction.join(",")
       }))
     }
 
@@ -1052,7 +1059,6 @@
         document.querySelectorAll('input[id^="uid_"]:checked').forEach(function (e) {
           userarray.push(e.dataset.id)
         })
-        users = userarray.join(',')
       }
       let pinned = document.getElementById("pinned").checked
       let junior = document.getElementById("junior").checked
@@ -1070,7 +1076,7 @@
         title: this.refs.eventname.value,
         starts: this.refs.date_starts.value + " " + this.refs.time_starts.value,
         duration: parseInt(this.refs.duration.value),
-        restriction: users,
+        restriction: userarray,
         location: this.refs.nlocation.value,
         capacity: parseInt(this.refs.ncapacity.value),
         courts: parseInt(this.refs.ncourts.value),
