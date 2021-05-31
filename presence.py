@@ -476,7 +476,8 @@ if __name__ == "__main__":
                 e["restriction"] = ",".join(e["restriction"])
                 logging.warning("Creating event on %s", e["starts"])
                 e["username"] = "vit.baisa"
-                presence.post_event(**e)
+                ret = presence.post_event(**e)
+                logging.warning("Returned %s", repr(ret))
         else:
             next_week = datetime.datetime.now() + datetime.timedelta(days=7)
             day = datetime.datetime.today().weekday()
@@ -488,7 +489,8 @@ if __name__ == "__main__":
                     e["restriction"] = ",".join(e["restriction"])
                     logging.warning("Creating recurrent event on %s", e["starts"])
                     e["username"] = "vit.baisa"
-                    presence.post_event(**e)
+                    ret = presence.post_event(**e)
+                    logging.warning("Returned %s", repr(ret))
             except Exception as msg:
                 logging.error("Failed to create event %s", str(msg))
     else:
