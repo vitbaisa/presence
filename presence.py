@@ -497,4 +497,8 @@ if __name__ == "__main__":
         config["PRESENCE_PASSWD_FILE"] = args.passwdfile
         presence = Presence(config)
         with make_server("", args.port, functools.partial(app, cls=presence)) as httpd:
-            httpd.serve_forever()
+            while 1:
+                try:
+                    httpd.serve_forever()
+                except:
+                    continue
