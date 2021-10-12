@@ -30,7 +30,7 @@ JSON_HEADER = ("Content-type", "application/json; charset=utf-8")
 JS_HEADER = ("Content-type", "text/javascript; charset=utf-8")
 
 
-def app(environ, start_response, cls=None) -> List[bytes]:
+def app(environ, start_response) -> List[bytes]:
     http_method = environ["REQUEST_METHOD"].lower()
     try:
         size = int(environ.get("CONTENT_LENGTH", 0))
@@ -42,7 +42,9 @@ def app(environ, start_response, cls=None) -> List[bytes]:
     else:
         query = json.loads(environ["wsgi.input"].read(size).decode("utf-8") or "{}")
     username = environ.get("HTTP_X_REMOTE_USER", None)
-    status, headers, response = cls.serve(
+    config = {k: v for k, v in os.environ.items() if k.startswith("PRESENCE_")}
+    presence = Presence(config)
+    status, headers, response = presence.serve(
         environ, http_method, path, {**query, "username": username}
     )
     start_response(status, headers)
@@ -70,8 +72,8 @@ class Presence:
 
         self.admins = self.config.get("PRESENCE_ADMINS", "").split(",")
         self.coaches = self.config.get("PRESENCE_COACHES", "").split(",")
-        self.in_advance = self.config["PRESENCE_IN_ADVANCE"]
-        self.passwd_file = self.config.get("PRESENCE_PASSWD_FILE", None)
+        self.in_advance = int(self.config["PRESENCE_IN_ADVANCE"])
+        self.passwd_file = self.config.get("PRESENCE_PASSWORD_FILE", None)
         self.events_file = self.config.get("PRESENCE_EVENTS_FILE", None)
 
     @functools.lru_cache
@@ -461,10 +463,7 @@ if __name__ == "__main__":
     parser.add_argument("--passwdfile", help="BasicAuth passwd file")
     args = parser.parse_args()
 
-    # TODO: get rid of config
-    config["PRESENCE_DB_PATH"] = args.db
-    config["PRESENCE_IN_ADVANCE"] = args.in_advance
-    config["PRESENCE_EVENTS_FILE"] = args.eventsfile
+    config["PRESENCE_IN_ADVANCE"] = 36
 
     if args.create:
         presence = Presence(config)
@@ -493,12 +492,3 @@ if __name__ == "__main__":
                     logging.warning("Returned %s", repr(ret))
             except Exception as msg:
                 logging.error("Failed to create event %s", str(msg))
-    else:
-        config["PRESENCE_PASSWD_FILE"] = args.passwdfile
-        presence = Presence(config)
-        with make_server("", args.port, functools.partial(app, cls=presence)) as httpd:
-            while 1:
-                try:
-                    httpd.serve_forever()
-                except:
-                    continue
