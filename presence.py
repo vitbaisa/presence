@@ -11,7 +11,7 @@ import argparse
 import subprocess
 
 from urllib.parse import parse_qs
-from typing import Optional, List, Union, Tuple
+from typing import Optional, List, Union, Tuple, Dict
 
 
 def admin(method):
@@ -355,7 +355,9 @@ class Presence:
         return {"message": "Event #%d removed" % eventid}
 
     @admin
-    def post_restriction(self, eventid: int, restriction: str, **argv) -> dict:
+    def post_restriction(
+        self, eventid: int, restriction: str, **argv
+    ) -> Dict[str, str]:
         q = "UPDATE events SET restriction = ? WHERE id = ?"
         r = self.cursor.execute(q, (restriction, eventid))
         self.conn.commit()
@@ -365,7 +367,7 @@ class Presence:
     def post_event(
         self,
         title: str,
-        restriction: Optional[str] = "",
+        restriction: Optional[List[str]] = [],
         starts: Optional[str] = "",
         duration: Optional[float] = 2.0,
         location: Optional[str] = "Zetor",
@@ -376,7 +378,7 @@ class Presence:
         pinned: Optional[int] = 0,
         junior: Optional[int] = 0,
         **argv,
-    ) -> dict:
+    ) -> Dict[str, str]:
         q = """INSERT INTO events
             (title, starts, duration, location, capacity, courts, register_limit, deregister_limit, restriction, pinned, class)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);"""
@@ -391,7 +393,7 @@ class Presence:
                 courts,
                 register_limit,
                 deregister_limit,
-                restriction,
+                ",".join(restriction),
                 pinned,
                 junior and "J" or "",
             ),

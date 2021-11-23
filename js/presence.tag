@@ -21,23 +21,23 @@
         <div class="card-content">
           <div class="card-title">
             <span>{event.starts.slice(0, -3)}</span>
-            <button if={registered && !event.locked_for_deregister}
+            <button if={registered && !event.locked_to_deregister}
                 class="secondary-bg float-right"
-                onclick={delete_presence.bind(this, this.user.id, "", event.id, event.locked_for_deregister)}>
+                onclick={delete_presence.bind(this, this.user.id, "", event.id, event.locked_to_deregister)}>
               Odhlásit
             </button>
             <button class="float-right" onclick={register}
-                if={!registered && presence.length < event.capacity && !event.locked_for_register}>
+                if={!registered && presence.length < event.capacity && !event.locked_to_register}>
               Přihlásit
             </button>
           </div>
           <p if={!registered && presence.length >= event.capacity} class="red-text">
             Termín je již plně obsazen.
           </p>
-          <p if={!registered && event.locked_for_register} class="red-text">
+          <p if={!registered && event.locked_to_register} class="red-text">
             Nelze se přihlašovat méně než {event.register_limit} hodin předem.
           </p>
-          <p if={registered && event.locked_for_deregister} class="red-text">
+          <p if={registered && event.locked_to_deregister} class="red-text">
             Nelze se odhlašovat méně než {event.deregister_limit} hodin předem.
           </p>
           <table class="striped">
@@ -1081,8 +1081,8 @@
     create_event() {
       // TODO: add event creator to restriction list
       let users = ''
+      let userarray = []
       if (document.querySelectorAll('input#all:not(:checked)').length) {
-        let userarray = []
         document.querySelectorAll('input[id^="uid_"]:checked').forEach(function (e) {
           userarray.push(e.dataset.id)
         })
