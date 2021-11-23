@@ -15,7 +15,9 @@ CREATE TABLE events (
     capacity    INTEGER DEFAULT 16,
     courts      INTEGER DEFAULT 4,
     restriction CHAR(128),
-    pinned      INTEGER DEFAULT 0
+    pinned      INTEGER DEFAULT 0,
+    register_limit INTEGER DEFAULT 36,
+    deregister_limit INTEGER DEFAULT 36
 );
 
 CREATE TABLE presence (

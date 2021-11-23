@@ -10,7 +10,6 @@ import logging
 import argparse
 import subprocess
 
-from wsgiref.simple_server import make_server
 from urllib.parse import parse_qs
 from typing import Optional, List, Union, Tuple
 
@@ -72,7 +71,6 @@ class Presence:
 
         self.admins = self.config.get("PRESENCE_ADMINS", "").split(",")
         self.coaches = self.config.get("PRESENCE_COACHES", "").split(",")
-        self.in_advance = int(self.config["PRESENCE_IN_ADVANCE"])
         self.passwd_file = self.config.get("PRESENCE_PASSWORD_FILE", None)
         self.events_file = self.config.get("PRESENCE_EVENTS_FILE", None)
 
@@ -108,7 +106,9 @@ class Presence:
                 courts      INTEGER DEFAULT 4,
                 restriction CHAR(128),
                 class       CHAR(1),
-                pinned      INTEGER
+                pinned      INTEGER DEFAULT 0,
+                register_limit INTEGER DEFAULT 36,
+                deregister_limit INTEGER DEFAULT 36
             );
             """
         )
@@ -249,12 +249,14 @@ class Presence:
             t1 = datetime.datetime.strptime(row["starts"], "%Y-%m-%d %H:%M:%S")
             now = datetime.datetime.now()
             delta = t1 - now
+            rlimit = "register_limit" in row.keys() and row["register_limit"] or 36
+            dlimit = "deregister_limit" in row.keys() and row["deregister_limit"] or 36
             o.append(
                 {
                     **row,
                     "junior": row["class"] == "J",
-                    "locked": (delta.seconds // 3600 + delta.days * 24) < self.in_advance,
-                    "in_advance": self.in_advance,
+                    "locked_to_deregister": (delta.seconds // 3600 + delta.days * 24) < dlimit,
+                    "locked_to_register": (delta.seconds // 3600 + delta.days * 24) < rlimit,
                     "restriction": restr,
                 }
             )
@@ -369,13 +371,15 @@ class Presence:
         location: Optional[str] = "Zetor",
         capacity: Optional[int] = 0,
         courts: Optional[int] = 0,
+        register_limit: Optional[int] = 36,
+        deregister_limit: Optional[int] = 36,
         pinned: Optional[int] = 0,
         junior: Optional[int] = 0,
         **argv,
     ) -> dict:
         q = """INSERT INTO events
-            (title, starts, duration, location, capacity, courts, restriction, pinned, class)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);"""
+            (title, starts, duration, location, capacity, courts, register_limit, deregister_limit, restriction, pinned, class)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);"""
         self.cursor.execute(
             q,
             (
@@ -385,6 +389,8 @@ class Presence:
                 location,
                 capacity,
                 courts,
+                register_limit,
+                deregister_limit,
                 restriction,
                 pinned,
                 junior and "J" or "",
@@ -462,8 +468,6 @@ if __name__ == "__main__":
     )
     parser.add_argument("--passwdfile", help="BasicAuth passwd file")
     args = parser.parse_args()
-
-    config["PRESENCE_IN_ADVANCE"] = 36
 
     if args.create:
         presence = Presence(config)

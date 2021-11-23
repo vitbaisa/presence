@@ -21,21 +21,24 @@
         <div class="card-content">
           <div class="card-title">
             <span>{event.starts.slice(0, -3)}</span>
-            <button if={registered}
+            <button if={registered && !event.locked_for_deregister}
                 class="secondary-bg float-right"
-                onclick={delete_presence.bind(this, this.user.id, "", event.id)}>Odhlásit</button>
-            <button
-                class="float-right"
-                if={!registered && presence.length < event.capacity && !event.locked}
-                onclick={register}>Přihlásit</button>
+                onclick={delete_presence.bind(this, this.user.id, "", event.id, event.locked_for_deregister)}>
+              Odhlásit
+            </button>
+            <button class="float-right" onclick={register}
+                if={!registered && presence.length < event.capacity && !event.locked_for_register}>
+              Přihlásit
+            </button>
           </div>
-          <p if={!registered && presence.length >= event.capacity}
-              class="red-text">
+          <p if={!registered && presence.length >= event.capacity} class="red-text">
             Termín je již plně obsazen.
           </p>
-          <p if={!registered && event.locked}
-              class="red-text">
-            Nelze se přihlašovat méně než {event.in_advance} hodin předem.
+          <p if={!registered && event.locked_for_register} class="red-text">
+            Nelze se přihlašovat méně než {event.register_limit} hodin předem.
+          </p>
+          <p if={registered && event.locked_for_deregister} class="red-text">
+            Nelze se odhlašovat méně než {event.deregister_limit} hodin předem.
           </p>
           <table class="striped">
             <tbody>
@@ -51,7 +54,7 @@
                   <span if={event.junior && item.coach}>(trenér)</span>
                   <button if={user.admin}
                       style="height: 1.2em; line-height: 1.2em"
-                      onclick={delete_presence.bind(this, item.userid, item.name, event.id)}
+                      onclick={delete_presence.bind(this, item.userid, item.name, event.id, false)}
                       class="red-text flat">✕</button>
                 </td>
               </tr>
@@ -169,6 +172,14 @@
               <label>Kapacita</label>
             </div>
             <div class="col s6 m3 input-field">
+              <input type="number" min="0" ref="rlimit" value="36" />
+              <label>Limit pro přihlášení</label>
+            </div>
+            <div class="col s6 m3 input-field">
+              <input type="number" min="0" ref="dlimit" value="36" />
+              <label>Limit pro odhlášení</label>
+            </div>
+            <div class="col s6 m3 input-field">
               <input type="checkbox" id="pinned" style="height: 3em;" />
               <label for="pinned" class="active">Připnout</label>
             </div>
@@ -204,7 +215,7 @@
     <div class="col s12">
       <div class="card">
         <div class="card-content">
-          <p>POZOR: Změny v této tabulce se projeví nejdřív za týden.</p>
+          <p>POZOR: Změny provedené v této tabulce se projeví nejdřív za týden.</p>
           <div class="row">
             <div class="col s12">
               <select onchange={change_ce_tab}>
@@ -238,7 +249,15 @@
             </div>
             <div class="col s4 m2 input-field">
               <input name="courts" type="number" min="1" max="6"
-                  value={item.courts} onchange={changeCE} /></td>
+                  value={item.courts} onchange={changeCE} />
+            </div>
+            <div class="col s4 m2 input-field">
+              <input name="register_limit" type="number" min="0" max="100"
+                  value={item.register_limit} onchange={changeCE} />
+            </div>
+            <div class="col s4 m2 input-field">
+              <input name="deregister_limit" type="number" min="0" max="100"
+                  value={item.deregister_limit} onchange={changeCE} />
             </div>
           </div>
           <div class="row tab" each={item, idx in recurrent_events}
@@ -991,7 +1010,11 @@
       }))
     }
 
-    delete_presence(userid, name, eventid, event) {
+    delete_presence(userid, name, eventid, locked_for_deregister) {
+      if (locked_for_deregister) {
+        alert("Již se nelze odhlásit");
+        return;
+      }
       let xhr = new XMLHttpRequest()
       xhr.withCredentials = true
       xhr.onload = function () {
@@ -1084,6 +1107,8 @@
         location: this.refs.nlocation.value,
         capacity: parseInt(this.refs.ncapacity.value),
         courts: parseInt(this.refs.ncourts.value),
+        deregister_limit: parseInt(this.refs.dlimit.value),
+        register_limit: parseInt(this.refs.rlimit.value),
         junior: junior ? 1 : 0,
         pinned: pinned ? 1 : 0,
       }))
