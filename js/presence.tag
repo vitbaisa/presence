@@ -20,6 +20,7 @@
       <div class="card">
         <div class="card-content">
           <div class="card-title">
+            <span>{event.title}</span>
             <span>{event.starts.slice(0, -3)}</span>
             <button if={registered && !event.locked_to_deregister}
                 class="secondary-bg float-right"
@@ -233,38 +234,46 @@
             </div>
             <div class="col s6 m4 input-field">
               <input type="text" name="title" value={item.title} onchange={changeCE} />
+              <label>Název</label>
             </div>
             <div class="col s6 m4 input-field">
               <input type="text" name="location" value={item.location} onchange={changeCE} />
+              <label>Místo</label>
             </div>
             <div class="col s6 m4 input-field">
               <input type="text" name="starts" value={item.starts} onchange={changeCE} />
+              <label>Začátek</label>
             </div>
             <div class="col s4 m2 input-field">
               <input name="duration" type="number" min="1" max="12" value={item.duration} onchange={changeCE} />
+              <label>Trvání</label>
             </div>
             <div class="col s4 m2 input-field">
               <input name="capacity" type="number" min="1" max="50"
                   value={item.capacity} onchange={changeCE} />
+              <label>Kapacita</label>
             </div>
             <div class="col s4 m2 input-field">
               <input name="courts" type="number" min="1" max="6"
                   value={item.courts} onchange={changeCE} />
+              <label>Kurty</label>
             </div>
             <div class="col s4 m2 input-field">
               <input name="register_limit" type="number" min="0" max="100"
                   value={item.register_limit} onchange={changeCE} />
+              <label>Limit pro přihlášení</label>
             </div>
             <div class="col s4 m2 input-field">
               <input name="deregister_limit" type="number" min="0" max="100"
                   value={item.deregister_limit} onchange={changeCE} />
+              <label>Limit pro odhlášení</label>
             </div>
           </div>
           <div class="row tab" each={item, idx in recurrent_events}
               if={ce_tab == idx}>
             <div class="col s6 m4 l3" each={u in users} style="white-space: nowrap;">
               <input type="checkbox" id="ce_{idx}_{u.id}"
-                  checked={item.restriction.indexOf(u.id.toString()) >= 0}
+                  checked={item.restriction.indexOf(u.id) >= 0}
                   onchange={changeCronEventRestriction} />
               <label for="ce_{idx}_{u.id}">{decodeURIComponent(u.nickname || u.username)}</label>
             </div>
@@ -932,20 +941,13 @@
     set_recurrent_events() {
       let xhr = new XMLHttpRequest()
       xhr.withCredentials = true
-      xhr.onload = function () {
-        if (xhr.status === 200) {
-          let payload = JSON.parse(xhr.responseText)
-          this.reccurent_events = payload.data.events
-          this.update()
-        }
-      }.bind(this)
       xhr.open("POST", "/recurrent_events")
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.send(JSON.stringify({data: {events: this.recurrent_events}}))
     }
 
     changeCronEventRestriction(ev) {
-      let uid = ev.item.u.id.toString()
+      let uid = ev.item.u.id
       let idx = this.ce_tab
       if (ev.currentTarget.checked) {
         if (this.recurrent_events[idx].restriction.indexOf(uid) == -1) {
@@ -983,7 +985,7 @@
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.send(JSON.stringify({
         eventid: this.event.id,
-        restriction: this.event.restriction.join(",")
+        restriction: this.event.restriction
       }))
     }
 

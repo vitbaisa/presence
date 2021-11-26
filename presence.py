@@ -104,7 +104,7 @@ class Presence:
                 location    CHAR(50) DEFAULT "Zetor",
                 capacity    INTEGER DEFAULT 16,
                 courts      INTEGER DEFAULT 4,
-                restriction CHAR(128),
+                restriction TEXT,
                 class       CHAR(1),
                 pinned      INTEGER DEFAULT 0,
                 register_limit INTEGER DEFAULT 36,
@@ -356,18 +356,18 @@ class Presence:
 
     @admin
     def post_restriction(
-        self, eventid: int, restriction: str, **argv
+        self, eventid: int, restriction: List[int], **argv
     ) -> Dict[str, str]:
         q = "UPDATE events SET restriction = ? WHERE id = ?"
-        r = self.cursor.execute(q, (restriction, eventid))
+        r = self.cursor.execute(q, (",".join(str(x) for x in restriction), eventid))
         self.conn.commit()
-        return {"data": "Update event #%d, restriction: %s" % (eventid, restriction)}
+        return {"data": "Update event #%d restriction" % eventid}
 
     @admin
     def post_event(
         self,
         title: str,
-        restriction: Optional[List[str]] = [],
+        restriction: Optional[List[int]] = [],
         starts: Optional[str] = "",
         duration: Optional[float] = 2.0,
         location: Optional[str] = "Zetor",
@@ -393,7 +393,7 @@ class Presence:
                 courts,
                 register_limit,
                 deregister_limit,
-                ",".join(restriction),
+                ",".join(str(x) for x in restriction),
                 pinned,
                 junior and "J" or "",
             ),
@@ -478,7 +478,6 @@ if __name__ == "__main__":
             if args.take < len(events):
                 e = events[args.take]
                 e["starts"] = e["starts"].replace("%Y-%m-%d", args.date)
-                e["restriction"] = ",".join(e["restriction"])
                 logging.warning("Creating event on %s", e["starts"])
                 e["username"] = "vit.baisa"
                 ret = presence.post_event(**e)
@@ -491,7 +490,6 @@ if __name__ == "__main__":
                     if not day == e["day"]:
                         continue
                     e["starts"] = next_week.strftime(e["starts"])
-                    e["restriction"] = ",".join(e["restriction"])
                     logging.warning("Creating recurrent event on %s", e["starts"])
                     e["username"] = "vit.baisa"
                     ret = presence.post_event(**e)

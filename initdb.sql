@@ -14,7 +14,7 @@ CREATE TABLE events (
     location    CHAR(50),
     capacity    INTEGER DEFAULT 16,
     courts      INTEGER DEFAULT 4,
-    restriction CHAR(128),
+    restriction TEXT,
     pinned      INTEGER DEFAULT 0,
     register_limit INTEGER DEFAULT 36,
     deregister_limit INTEGER DEFAULT 36
