@@ -60,7 +60,7 @@ class Presence:
     def __init__(self, config):
         self.config = config
         if not os.path.exists(config["PRESENCE_DB_PATH"]):
-            logging.warning(f"Initializing {config['PRESENCE_DB_PATH']}")
+            logging.info(f"Initializing {config['PRESENCE_DB_PATH']}")
             self.conn, self.cursor = self._init_db()
         else:
             self.conn = sqlite3.connect(
@@ -281,7 +281,7 @@ class Presence:
             ".json", "_" + datetime.datetime.now().strftime("%Y%m%d%H%M%S") + ".json"
         )
         shutil.copyfile(self.events_file, copy_fn)
-        logging.warning(f"Events file backuped to {copy_fn}")
+        logging.info(f"Events file backuped to {copy_fn}")
         with open(self.events_file, "w") as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
         return {"data": data}
@@ -478,10 +478,10 @@ if __name__ == "__main__":
             if args.take < len(events):
                 e = events[args.take]
                 e["starts"] = e["starts"].replace("%Y-%m-%d", args.date)
-                logging.warning("Creating event on %s", e["starts"])
+                logging.info("Creating event on %s", e["starts"])
                 e["username"] = "vit.baisa"
                 ret = presence.post_event(**e)
-                logging.warning("Returned %s", repr(ret))
+                logging.info("Returned %s", repr(ret))
         else:
             next_week = datetime.datetime.now() + datetime.timedelta(days=7)
             day = datetime.datetime.today().weekday()
@@ -490,9 +490,9 @@ if __name__ == "__main__":
                     if not day == e["day"]:
                         continue
                     e["starts"] = next_week.strftime(e["starts"])
-                    logging.warning("Creating recurrent event on %s", e["starts"])
+                    logging.info("Creating recurrent event on %s", e["starts"])
                     e["username"] = "vit.baisa"
                     ret = presence.post_event(**e)
-                    logging.warning("Returned %s", repr(ret))
+                    logging.info("Returned %s", repr(ret))
             except Exception as msg:
                 logging.error("Failed to create event %s", str(msg))
