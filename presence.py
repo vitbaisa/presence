@@ -249,14 +249,14 @@ class Presence:
             t1 = datetime.datetime.strptime(row["starts"], "%Y-%m-%d %H:%M:%S")
             now = datetime.datetime.now()
             delta = t1 - now
-            rlimit = "register_limit" in row.keys() and row["register_limit"] or 36
-            dlimit = "deregister_limit" in row.keys() and row["deregister_limit"] or 36
+            rlimit = row["register_limit"] if "register_limit" in row.keys() else 36
+            dlimit = row["deregister_limit"] if "deregister_limit" in row.keys() else 36
             o.append(
                 {
                     **row,
                     "junior": row["class"] == "J",
-                    "locked_to_deregister": (delta.seconds // 3600 + delta.days * 24) < dlimit,
-                    "locked_to_register": (delta.seconds // 3600 + delta.days * 24) < rlimit,
+                    "locked_to_deregister": dlimit and (delta.seconds // 3600 + delta.days * 24) < dlimit or False,
+                    "locked_to_register": rlimit and (delta.seconds // 3600 + delta.days * 24) < rlimit or False,
                     "restriction": restr,
                 }
             )
@@ -299,6 +299,20 @@ class Presence:
         self.cursor.execute(q, (capacity, eventid))
         self.conn.commit()
         return {"data": f"Update event #{eventid}, capacity: {capacity}"}
+
+    @admin
+    def put_register_limit(self, eventid: int, register_limit: int, **argv) -> dict:
+        q = "UPDATE events SET register_limit = ? WHERE id = ?"
+        self.cursor.execute(q, (register_limit, eventid))
+        self.conn.commit()
+        return {"data": f"Update event #{eventid}, register limit: {register_limit}"}
+
+    @admin
+    def put_deregister_limit(self, eventid: int, deregister_limit: int, **argv) -> dict:
+        q = "UPDATE events SET deregister_limit = ? WHERE id = ?"
+        self.cursor.execute(q, (deregister_limit, eventid))
+        self.conn.commit()
+        return {"data": f"Update event #{eventid}, deregister limit: {deregister_limit}"}
 
     def get_presence(self, eventid: int, **argv) -> dict:
         q = """SELECT users.username as username,

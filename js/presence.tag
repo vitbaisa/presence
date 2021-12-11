@@ -87,6 +87,18 @@
                     ref="ccourts" value={event.courts} />
               </div>
               <span if={!user.admin}>{event.courts}</span>
+              <div if={user.admin}>
+                přihlášení:
+                <input type="number" min="0" max="100" size="2"
+                    style="width: auto; margin-right: 1em;"
+                    onchange={update_register_limit}
+                    ref="creg" value={event.register_limit} />
+                odhlášení:
+                <input type="number" min="0" max="100" size="2"
+                    style="width: auto;"
+                    onchange={update_deregister_limit}
+                    ref="cdereg" value={event.deregister_limit} />
+              </div>
             </div>
           </div>
         </div>
@@ -1027,6 +1039,37 @@
         userid: name ? -1 : parseInt(userid),
         name: name,
         eventid: parseInt(eventid),
+      }))
+    }
+
+    update_deregister_limit(ev) {
+      let xhr = new XMLHttpRequest()
+      xhr.withCredentials = true
+      xhr.onload = function () {
+        this.event.deregister_limit = this.refs.cdereg.value
+        // TODO: get new locked_for_deregister from server
+        this.update()
+      }.bind(this)
+      xhr.open('PUT', "/deregister_limit")
+      xhr.send(JSON.stringify({
+        eventid: this.event.id,
+        deregister_limit: this.refs.cdereg.value,
+      }))
+    }
+
+    update_register_limit(ev) {
+      let xhr = new XMLHttpRequest()
+      xhr.withCredentials = true
+      xhr.onload = function () {
+        this.event.register_limit = this.refs.creg.value
+        // TODO: get new locked_for_register from server
+        this.update()
+      }.bind(this)
+      // TODO: use one endpoint for event updating
+      xhr.open('PUT', "/register_limit")
+      xhr.send(JSON.stringify({
+        eventid: this.event.id,
+        register_limit: this.refs.creg.value,
       }))
     }
 
